@@ -19,11 +19,13 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P0 -- 骨架。** Gradle 多模块工作区、`xlang` 命令行入口（`version` / `help` / `phase`）、
-所有后续子命令的占位实现（会告诉你它计划在哪个阶段实装），全部子模块 JUnit 测试通过。
+**P1 -- 词法器 + 语法分析器。** 编译器现已具备 UTF-8 安全的手写词法器、
+密封的 v0.1 AST、可错误恢复的递归下降语法分析器，并可通过 `tokens` 和
+`parse` 命令稳定打印 token 流与 AST。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
 - [阶段 0 -- 骨架](docs/phases/phase-0.zh-CN.md)
+- [阶段 1 -- 词法器与语法分析器](docs/phases/phase-1.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
@@ -58,6 +60,8 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 ./gradlew build
 ./gradlew :xlang-cli:run --args="help"
 ./gradlew :xlang-cli:run --args="phase"
+./gradlew :xlang-cli:run --args="tokens program.xl"
+./gradlew :xlang-cli:run --args="parse program.xl"
 ```
 
 构建使用 Gradle 的 Java 21 toolchain；如果本地找不到 JDK 21，Gradle 会自动下载。

@@ -21,12 +21,13 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P0 -- Scaffold.** Gradle multi-module workspace, `xlang` CLI entry point
-with `version`, `help`, and `phase` commands, planned command stubs that
-point at their future phase, and green JUnit tests across all modules.
+**P1 -- Lexer + parser.** The compiler now has a UTF-8-safe hand-written
+lexer, a sealed v0.1 AST, a recovering recursive-descent parser, and stable
+AST printing through the `tokens` and `parse` CLI commands.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
+- [Phase 1 -- Lexer and parser](docs/phases/phase-1.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -61,6 +62,8 @@ point at their future phase, and green JUnit tests across all modules.
 ./gradlew build
 ./gradlew :xlang-cli:run --args="help"
 ./gradlew :xlang-cli:run --args="phase"
+./gradlew :xlang-cli:run --args="tokens program.xl"
+./gradlew :xlang-cli:run --args="parse program.xl"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

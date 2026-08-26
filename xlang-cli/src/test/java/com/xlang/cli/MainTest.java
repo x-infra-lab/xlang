@@ -8,7 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import org.junit.jupiter.api.Test;
 
-/** P0 smoke tests: CLI wiring exists and reports the right phase. */
+/** CLI smoke tests, including the P1 front-end commands. */
 class MainTest {
 
     @Test
@@ -30,10 +30,17 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP0() {
+    void phaseCommandReportsP1() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P0"));
+        assertTrue(cap.stdout.contains("P1"));
+    }
+
+    @Test
+    void helpMentionsFrontEndCommands() {
+        Capture cap = Capture.run(() -> Main.run(new String[] {"help"}));
+        assertTrue(cap.stdout.contains("tokens"));
+        assertTrue(cap.stdout.contains("parse"));
     }
 
     @Test

@@ -45,6 +45,8 @@ CLI:
 to a canonical AST form; JUnit covers happy paths, escape sequences,
 operator precedence, and at least four error-recovery cases.
 
+**Done.**
+
 ## P2 — Types and scoping
 
 - `SymbolTable` with lexical scopes.

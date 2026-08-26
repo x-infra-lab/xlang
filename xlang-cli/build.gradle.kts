@@ -25,3 +25,9 @@ application {
     mainClass.set("com.xlang.cli.Main")
     applicationName = "xlang"
 }
+
+// Keep source-file arguments relative to the repository when invoked through
+// `./gradlew :xlang-cli:run`, matching the examples in the phase documents.
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.projectDir
+}

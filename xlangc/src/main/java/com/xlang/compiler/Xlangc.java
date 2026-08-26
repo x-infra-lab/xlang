@@ -1,5 +1,10 @@
 package com.xlang.compiler;
 
+import com.xlang.compiler.lex.LexResult;
+import com.xlang.compiler.lex.Lexer;
+import com.xlang.compiler.parse.ParseResult;
+import com.xlang.compiler.parse.Parser;
+
 /**
  * xlangc: the xlang compiler.
  *
@@ -12,14 +17,17 @@ package com.xlang.compiler;
  *   <li>P6 -- backend: XIR -> XMachine machine code, emit {@code .xo} objects.</li>
  * </ul>
  *
- * <p>This class exists in P0 only so the module has something to compile and
- * so the CLI can already import it. It carries no logic yet.
+ * <p>This small facade is the public P1 front-end boundary used by the CLI.
  */
 public final class Xlangc {
     private Xlangc() {}
 
-    /** Marker for tests: proves the module is on the classpath. */
-    public static String greeting() {
-        return "xlangc P0 scaffold ready";
+    public static LexResult lex(String source) { return new Lexer(source).lex(); }
+    public static ParseResult parse(String source) {
+        LexResult lexed = lex(source);
+        ParseResult parsed = new Parser(lexed.tokens()).parse();
+        if (lexed.diagnostics().isEmpty()) return parsed;
+        var all = new java.util.ArrayList<>(lexed.diagnostics()); all.addAll(parsed.diagnostics());
+        return new ParseResult(parsed.program(), all);
     }
 }

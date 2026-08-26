@@ -1,5 +1,10 @@
 package com.xlang.cli;
 
+import com.xlang.compiler.Xlangc;
+import com.xlang.compiler.print.AstPrinter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -14,7 +19,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P0";
+    public static final String VERSION = "0.1.0-P1";
 
     private Main() {}
 
@@ -44,10 +49,12 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P0 (scaffold)");
-                System.out.println("Next milestone: P1 hand-written lexer + parser");
+                System.out.println("Current phase: P1 (lexer + parser)");
+                System.out.println("Next milestone: P2 type checker + scoped resolution");
                 yield 0;
             }
+            case "tokens" -> frontEnd(rest, false);
+            case "parse" -> frontEnd(rest, true);
             case "compile", "run", "link", "trace", "mem", "layout", "syscall-trace" ->
                 stub(cmd);
             default -> {
@@ -58,10 +65,27 @@ public final class Main {
         };
     }
 
+    private static int frontEnd(String[] args, boolean parse) {
+        if (args.length != 1) { System.err.println("Usage: xlang " + (parse ? "parse" : "tokens") + " <file>"); return 64; }
+        final String source;
+        try { source = Files.readString(Path.of(args[0])); }
+        catch (IOException ex) { System.err.println("xlang: cannot read '" + args[0] + "': " + ex.getMessage()); return 66; }
+        if (!parse) {
+            var result = Xlangc.lex(source);
+            result.tokens().stream().filter(t -> t.type() != com.xlang.compiler.token.TokenType.EOF).forEach(System.out::println);
+            result.diagnostics().forEach(d -> System.err.println(d.format(args[0])));
+            return result.hasErrors() ? 1 : 0;
+        }
+        var result = Xlangc.parse(source);
+        result.diagnostics().forEach(d -> System.err.println(d.format(args[0])));
+        if (result.hasErrors()) return 1;
+        System.out.print(AstPrinter.print(result.program())); return 0;
+    }
+
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P0. "
+            "xlang " + cmd + ": not implemented yet in P1. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -89,6 +113,8 @@ public final class Main {
             "  version               Print xlang version",
             "  help                  Print this help",
             "  phase                 Print current implementation phase",
+            "  tokens <file>         Print the P1 token stream",
+            "  parse <file>          Parse source and print its AST",
             "  compile <file>        [P6] Compile .xl source to a .xo object",
             "  link <files>          [P7] Link .xo objects into a .xex executable",
             "  run <file>            [P4] Run a program on the XMachine",
