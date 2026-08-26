@@ -50,6 +50,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
 - 诊断信息带 `SourceSpan` 与简短的人类可读解释。
 - CLI：`xlang check <file>` 跑一遍 lex + parse + typecheck。
 
+**已完成。**
+
 ## P3 — XIR
 
 - 三地址中间表示，基本块、`Function`、`Module`。

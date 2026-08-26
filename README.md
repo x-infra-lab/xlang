@@ -21,13 +21,14 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P1 -- Lexer + parser.** The compiler now has a UTF-8-safe hand-written
-lexer, a sealed v0.1 AST, a recovering recursive-descent parser, and stable
-AST printing through the `tokens` and `parse` CLI commands.
+**P2 -- Types + lexical scopes.** The front end now resolves names through
+nested scopes, assigns a type to every expression, checks operators, calls,
+conditions and returns, and exposes the full pipeline through `xlang check`.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
 - [Phase 1 -- Lexer and parser](docs/phases/phase-1.md)
+- [Phase 2 -- Types and lexical scopes](docs/phases/phase-2.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -64,6 +65,7 @@ AST printing through the `tokens` and `parse` CLI commands.
 ./gradlew :xlang-cli:run --args="phase"
 ./gradlew :xlang-cli:run --args="tokens program.xl"
 ./gradlew :xlang-cli:run --args="parse program.xl"
+./gradlew :xlang-cli:run --args="check program.xl"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

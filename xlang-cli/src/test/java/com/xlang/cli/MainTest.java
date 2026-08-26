@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** CLI smoke tests, including the P1 front-end commands. */
 class MainTest {
@@ -30,10 +33,25 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP1() {
+    void phaseCommandReportsP2() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P1"));
+        assertTrue(cap.stdout.contains("P2"));
+    }
+
+    @Test
+    void checkCommandReportsSuccessAndTypeErrors(@TempDir Path directory) throws Exception {
+        Path valid = directory.resolve("valid.xl");
+        Files.writeString(valid, "fn main() -> int { return 0; }");
+        Capture ok = Capture.run(() -> Main.run(new String[] {"check", valid.toString()}));
+        assertEquals(0, ok.exit);
+        assertTrue(ok.stdout.contains("type check passed"));
+
+        Path invalid = directory.resolve("invalid.xl");
+        Files.writeString(invalid, "fn main() -> int { return true; }");
+        Capture bad = Capture.run(() -> Main.run(new String[] {"check", invalid.toString()}));
+        assertNotEquals(0, bad.exit);
+        assertTrue(bad.stderr.contains("expects int but got bool"));
     }
 
     @Test
@@ -41,6 +59,7 @@ class MainTest {
         Capture cap = Capture.run(() -> Main.run(new String[] {"help"}));
         assertTrue(cap.stdout.contains("tokens"));
         assertTrue(cap.stdout.contains("parse"));
+        assertTrue(cap.stdout.contains("check"));
     }
 
     @Test

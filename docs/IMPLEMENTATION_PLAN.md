@@ -56,6 +56,8 @@ operator precedence, and at least four error-recovery cases.
 - Diagnostics carry `SourceSpan` + a short human explanation.
 - CLI: `xlang check <file>` runs lex + parse + typecheck.
 
+**Done.**
+
 ## P3 — XIR
 
 - Three-address IR with basic blocks, `Function`, `Module`.

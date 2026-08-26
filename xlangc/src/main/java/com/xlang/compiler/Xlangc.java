@@ -4,6 +4,10 @@ import com.xlang.compiler.lex.LexResult;
 import com.xlang.compiler.lex.Lexer;
 import com.xlang.compiler.parse.ParseResult;
 import com.xlang.compiler.parse.Parser;
+import com.xlang.compiler.sema.CheckResult;
+import com.xlang.compiler.sema.TypeCheckResult;
+import com.xlang.compiler.sema.TypeChecker;
+import java.util.IdentityHashMap;
 
 /**
  * xlangc: the xlang compiler.
@@ -29,5 +33,15 @@ public final class Xlangc {
         if (lexed.diagnostics().isEmpty()) return parsed;
         var all = new java.util.ArrayList<>(lexed.diagnostics()); all.addAll(parsed.diagnostics());
         return new ParseResult(parsed.program(), all);
+    }
+
+    public static CheckResult check(String source) {
+        ParseResult parsed = parse(source);
+        if (parsed.hasErrors()) {
+            TypeCheckResult skipped = new TypeCheckResult(java.util.List.of(), new IdentityHashMap<>());
+            return new CheckResult(parsed.program(), parsed.diagnostics(), skipped);
+        }
+        TypeCheckResult checked = new TypeChecker(parsed.program()).check();
+        return new CheckResult(parsed.program(), checked.diagnostics(), checked);
     }
 }
