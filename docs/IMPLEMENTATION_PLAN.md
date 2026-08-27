@@ -64,6 +64,8 @@ operator precedence, and at least four error-recovery cases.
 - Lowering pass from typed AST to XIR.
 - CLI: `xlang ir <file>` prints XIR.
 
+**Done.**
+
 ## P4 — XMachine and XCPU
 
 - `XCPU` with registers, flags, program counter.

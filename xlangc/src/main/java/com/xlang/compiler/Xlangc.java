@@ -7,6 +7,8 @@ import com.xlang.compiler.parse.Parser;
 import com.xlang.compiler.sema.CheckResult;
 import com.xlang.compiler.sema.TypeCheckResult;
 import com.xlang.compiler.sema.TypeChecker;
+import com.xlang.compiler.xir.IrResult;
+import com.xlang.compiler.xir.Lowerer;
 import java.util.IdentityHashMap;
 
 /**
@@ -43,5 +45,11 @@ public final class Xlangc {
         }
         TypeCheckResult checked = new TypeChecker(parsed.program()).check();
         return new CheckResult(parsed.program(), checked.diagnostics(), checked);
+    }
+
+    public static IrResult lower(String source) {
+        CheckResult checked = check(source);
+        if (checked.hasErrors()) return new IrResult(null, checked.diagnostics());
+        return new IrResult(new Lowerer(checked.program(), checked.typeCheck()).lower(), java.util.List.of());
     }
 }

@@ -2,6 +2,7 @@ package com.xlang.cli;
 
 import com.xlang.compiler.Xlangc;
 import com.xlang.compiler.print.AstPrinter;
+import com.xlang.compiler.xir.XirPrinter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +20,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P2";
+    public static final String VERSION = "0.1.0-P3";
 
     private Main() {}
 
@@ -49,13 +50,14 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P2 (types + lexical scopes)");
-                System.out.println("Next milestone: P3 three-address XIR");
+                System.out.println("Current phase: P3 (three-address XIR)");
+                System.out.println("Next milestone: P4 XMachine + XCPU boot");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
             case "parse" -> frontEnd(rest, true);
             case "check" -> check(rest);
+            case "ir" -> ir(rest);
             case "compile", "run", "link", "trace", "mem", "layout", "syscall-trace" ->
                 stub(cmd);
             default -> {
@@ -64,6 +66,18 @@ public final class Main {
                 yield 2;
             }
         };
+    }
+
+    private static int ir(String[] args) {
+        if (args.length != 1) { System.err.println("Usage: xlang ir <file>"); return 64; }
+        final String source;
+        try { source = Files.readString(Path.of(args[0])); }
+        catch (IOException ex) { System.err.println("xlang: cannot read '" + args[0] + "': " + ex.getMessage()); return 66; }
+        var result = Xlangc.lower(source);
+        result.diagnostics().forEach(d -> System.err.println(d.format(args[0])));
+        if (result.hasErrors()) return 1;
+        System.out.print(XirPrinter.print(result.module()));
+        return 0;
     }
 
     private static int check(String[] args) {
@@ -98,7 +112,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P2. "
+            "xlang " + cmd + ": not implemented yet in P3. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -129,6 +143,7 @@ public final class Main {
             "  tokens <file>         Print the P1 token stream",
             "  parse <file>          Parse source and print its AST",
             "  check <file>          Run lexer, parser, and P2 type checker",
+            "  ir <file>             Lower checked source to P3 three-address XIR",
             "  compile <file>        [P6] Compile .xl source to a .xo object",
             "  link <files>          [P7] Link .xo objects into a .xex executable",
             "  run <file>            [P4] Run a program on the XMachine",

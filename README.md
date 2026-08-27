@@ -21,14 +21,15 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P2 -- Types + lexical scopes.** The front end now resolves names through
-nested scopes, assigns a type to every expression, checks operators, calls,
-conditions and returns, and exposes the full pipeline through `xlang check`.
+**P3 -- Three-address XIR.** Checked programs now lower into explicit
+functions and basic blocks with three-address instructions, control-flow
+terminators, short-circuit branches, and stable textual output via `xlang ir`.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
 - [Phase 1 -- Lexer and parser](docs/phases/phase-1.md)
 - [Phase 2 -- Types and lexical scopes](docs/phases/phase-2.md)
+- [Phase 3 -- Three-address XIR](docs/phases/phase-3.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -66,6 +67,7 @@ conditions and returns, and exposes the full pipeline through `xlang check`.
 ./gradlew :xlang-cli:run --args="tokens program.xl"
 ./gradlew :xlang-cli:run --args="parse program.xl"
 ./gradlew :xlang-cli:run --args="check program.xl"
+./gradlew :xlang-cli:run --args="ir program.xl"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

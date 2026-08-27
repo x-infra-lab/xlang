@@ -58,6 +58,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
 - 从已定型 AST 到 XIR 的降级 pass。
 - CLI：`xlang ir <file>` 打印 XIR。
 
+**已完成。**
+
 ## P4 — XMachine 与 XCPU
 
 - `XCPU`：寄存器、标志位、程序计数器。

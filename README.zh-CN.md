@@ -19,14 +19,14 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P2 -- 类型与词法作用域。** 前端现在能够通过嵌套作用域解析名字，为每个
-表达式赋予类型，检查运算符、函数调用、条件与返回值，并通过 `xlang check`
-暴露完整的前端检查流水线。
+**P3 -- 三地址 XIR。** 通过检查的程序现在会降级为显式函数和基本块，包含
+三地址指令、控制流终结指令及短路分支，并可通过 `xlang ir` 获得稳定文本输出。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
 - [阶段 0 -- 骨架](docs/phases/phase-0.zh-CN.md)
 - [阶段 1 -- 词法器与语法分析器](docs/phases/phase-1.zh-CN.md)
 - [阶段 2 -- 类型与词法作用域](docs/phases/phase-2.zh-CN.md)
+- [阶段 3 -- 三地址 XIR](docs/phases/phase-3.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
@@ -64,6 +64,7 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 ./gradlew :xlang-cli:run --args="tokens program.xl"
 ./gradlew :xlang-cli:run --args="parse program.xl"
 ./gradlew :xlang-cli:run --args="check program.xl"
+./gradlew :xlang-cli:run --args="ir program.xl"
 ```
 
 构建使用 Gradle 的 Java 21 toolchain；如果本地找不到 JDK 21，Gradle 会自动下载。
