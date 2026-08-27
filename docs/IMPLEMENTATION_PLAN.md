@@ -73,6 +73,8 @@ operator precedence, and at least four error-recovery cases.
 - Hand-assembled programs run.
 - CLI: `xlang run <hex-program>`, `xlang trace <hex-program>`.
 
+**Done.**
+
 ## P5 — XOS
 
 - Page table, `mmap`/`brk`, protection bits, page fault reporting.

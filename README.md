@@ -21,15 +21,16 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P3 -- Three-address XIR.** Checked programs now lower into explicit
-functions and basic blocks with three-address instructions, control-flow
-terminators, short-circuit branches, and stable textual output via `xlang ir`.
+**P4 -- XMachine + XCPU.** Hand-assembled bytecode now runs on an observable
+64-bit virtual CPU with registers, flags, RAM, arithmetic, branches, memory,
+stack and calls. `run` prints final state; `trace` logs every instruction.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
 - [Phase 1 -- Lexer and parser](docs/phases/phase-1.md)
 - [Phase 2 -- Types and lexical scopes](docs/phases/phase-2.md)
 - [Phase 3 -- Three-address XIR](docs/phases/phase-3.md)
+- [Phase 4 -- XMachine and XCPU](docs/phases/phase-4.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -68,6 +69,7 @@ terminators, short-circuit branches, and stable textual output via `xlang ir`.
 ./gradlew :xlang-cli:run --args="parse program.xl"
 ./gradlew :xlang-cli:run --args="check program.xl"
 ./gradlew :xlang-cli:run --args="ir program.xl"
+./gradlew :xlang-cli:run --args="run '10 00 2a 00 00 00 00 00 00 00 00'"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

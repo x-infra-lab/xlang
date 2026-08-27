@@ -33,10 +33,10 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP3() {
+    void phaseCommandReportsP4() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P3"));
+        assertTrue(cap.stdout.contains("P4"));
     }
 
     @Test
@@ -68,6 +68,24 @@ class MainTest {
         Capture bad = Capture.run(() -> Main.run(new String[] {"ir", invalid.toString()}));
         assertNotEquals(0, bad.exit);
         assertTrue(bad.stderr.contains("expects int but got bool"));
+    }
+
+    @Test
+    void runAndTraceExecuteHexPrograms() {
+        String program = "10 00 2a 00 00 00 00 00 00 00 00";
+        Capture run = Capture.run(() -> Main.run(new String[] {"run", program}));
+        assertEquals(0, run.exit);
+        assertTrue(run.stdout.contains("r0 = 42"));
+        assertTrue(run.stdout.contains("halted after 2 instructions"));
+
+        Capture trace = Capture.run(() -> Main.run(new String[] {"trace", program}));
+        assertEquals(0, trace.exit);
+        assertTrue(trace.stdout.contains("movi r0, 42"));
+        assertTrue(trace.stdout.contains("000a:"));
+
+        Capture invalid = Capture.run(() -> Main.run(new String[] {"run", "zz"}));
+        assertNotEquals(0, invalid.exit);
+        assertTrue(invalid.stderr.contains("invalid hex digit"));
     }
 
     @Test

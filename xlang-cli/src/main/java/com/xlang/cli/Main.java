@@ -3,6 +3,10 @@ package com.xlang.cli;
 import com.xlang.compiler.Xlangc;
 import com.xlang.compiler.print.AstPrinter;
 import com.xlang.compiler.xir.XirPrinter;
+import com.xlang.vm.HexProgram;
+import com.xlang.vm.MachineFault;
+import com.xlang.vm.XCpu;
+import com.xlang.vm.XMachine;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +24,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P3";
+    public static final String VERSION = "0.1.0-P4";
 
     private Main() {}
 
@@ -50,15 +54,17 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P3 (three-address XIR)");
-                System.out.println("Next milestone: P4 XMachine + XCPU boot");
+                System.out.println("Current phase: P4 (XMachine + XCPU)");
+                System.out.println("Next milestone: P5 XOS memory subsystem");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
             case "parse" -> frontEnd(rest, true);
             case "check" -> check(rest);
             case "ir" -> ir(rest);
-            case "compile", "run", "link", "trace", "mem", "layout", "syscall-trace" ->
+            case "run" -> machine(rest, false);
+            case "trace" -> machine(rest, true);
+            case "compile", "link", "mem", "layout", "syscall-trace" ->
                 stub(cmd);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
@@ -66,6 +72,31 @@ public final class Main {
                 yield 2;
             }
         };
+    }
+
+    private static int machine(String[] args, boolean trace) {
+        if (args.length == 0) {
+            System.err.println("Usage: xlang " + (trace ? "trace" : "run") + " <hex-program>");
+            return 64;
+        }
+        try {
+            byte[] program = HexProgram.parse(String.join(" ", args));
+            XMachine machine = new XMachine();
+            machine.load(program);
+            var result = machine.run(XMachine.DEFAULT_STEP_LIMIT, trace);
+            if (trace) result.trace().forEach(entry -> System.out.println(entry.format()));
+            XCpu.Snapshot cpu = result.cpu();
+            System.out.println("halted after " + cpu.steps() + " instructions");
+            for (int i = 0; i < XCpu.REGISTER_COUNT; i++) {
+                System.out.println("r" + i + " = " + cpu.register(i));
+            }
+            System.out.println("pc = " + cpu.pc() + ", Z = " + (cpu.zero() ? 1 : 0)
+                + ", N = " + (cpu.negative() ? 1 : 0));
+            return 0;
+        } catch (IllegalArgumentException | MachineFault ex) {
+            System.err.println("xlang: " + ex.getMessage());
+            return 65;
+        }
     }
 
     private static int ir(String[] args) {
@@ -112,7 +143,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P3. "
+            "xlang " + cmd + ": not implemented yet in P4. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -146,8 +177,8 @@ public final class Main {
             "  ir <file>             Lower checked source to P3 three-address XIR",
             "  compile <file>        [P6] Compile .xl source to a .xo object",
             "  link <files>          [P7] Link .xo objects into a .xex executable",
-            "  run <file>            [P4] Run a program on the XMachine",
-            "  trace <file>          [P4] Same as run, but log every instruction",
+            "  run <hex-program>     Run hand-assembled bytes on the P4 XMachine",
+            "  trace <hex-program>   Same as run, but log every instruction",
             "  mem <subcmd>          [P5] Inspect virtual memory / page table / heap",
             "  layout <type>         [P9] Print struct/union memory layout",
             "  syscall-trace <file>  [P8] strace-style syscall log",

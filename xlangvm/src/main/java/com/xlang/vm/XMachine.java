@@ -1,24 +1,234 @@
 package com.xlang.vm;
 
-/**
- * XMachine: the virtual machine that xlang programs will run on.
- *
- * <p>In future phases this class will own:
- * <ul>
- *   <li>a byte[] representing physical RAM,</li>
- *   <li>an {@code XCPU} with named registers (rax/rbx/rsp/rbp/rip/...),</li>
- *   <li>an {@code XOS} kernel handling page tables and syscalls,</li>
- *   <li>an {@code XLoader} that maps {@code .xex} images into memory.</li>
- * </ul>
- *
- * <p>P0 note: only a stub. The important thing is that this class already
- * *names* the pieces we will build, so the phase docs and the code stay
- * in sync from day one.
- */
-public final class XMachine {
-    private XMachine() {}
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-    public static String greeting() {
-        return "xlangvm P0 scaffold ready";
+/** A byte-addressed machine with a small decoded P4 instruction set. */
+public final class XMachine {
+    public static final int DEFAULT_RAM_SIZE = 64 * 1024;
+    public static final long DEFAULT_STEP_LIMIT = 1_000_000;
+
+    private final byte[] ram;
+    private XCpu cpu = new XCpu();
+    private int programEnd;
+
+    public XMachine() { this(DEFAULT_RAM_SIZE); }
+
+    public XMachine(int ramSize) {
+        if (ramSize < 16) throw new IllegalArgumentException("RAM must be at least 16 bytes");
+        ram = new byte[ramSize];
+    }
+
+    public XCpu cpu() { return cpu; }
+    public int ramSize() { return ram.length; }
+
+    public void load(byte[] program) {
+        if (program.length == 0) throw new IllegalArgumentException("program is empty");
+        if (program.length > ram.length) throw new IllegalArgumentException("program does not fit in RAM");
+        Arrays.fill(ram, (byte) 0);
+        System.arraycopy(program, 0, ram, 0, program.length);
+        programEnd = program.length;
+        cpu = new XCpu();
+        cpu.register(XCpu.STACK_POINTER, ram.length);
+    }
+
+    public ExecutionResult run() { return run(DEFAULT_STEP_LIMIT, false); }
+
+    public ExecutionResult run(long maxSteps, boolean trace) {
+        if (programEnd == 0) throw new IllegalStateException("no program loaded");
+        if (maxSteps < 1) throw new IllegalArgumentException("step limit must be positive");
+        List<TraceEntry> entries = new ArrayList<>();
+        while (!cpu.halted()) {
+            if (cpu.steps() >= maxSteps) throw fault(cpu.pc(), "instruction step limit exceeded (" + maxSteps + ")");
+            TraceEntry entry = step();
+            if (trace) entries.add(entry);
+        }
+        return new ExecutionResult(cpu.snapshot(), entries);
+    }
+
+    public TraceEntry step() {
+        if (programEnd == 0) throw new IllegalStateException("no program loaded");
+        if (cpu.halted()) throw new IllegalStateException("CPU is halted");
+        int address = cpu.pc();
+        int opcodeByte = instructionByte(address, address);
+        Opcode opcode = Opcode.fromByte(opcodeByte);
+        if (opcode == null) throw fault(address, "unknown opcode 0x" + String.format("%02x", opcodeByte));
+        requireInstructionRange(address, opcode.size(), address);
+        byte[] encoded = Arrays.copyOfRange(ram, address, address + opcode.size());
+        int next = address + opcode.size();
+        cpu.pc(next);
+        String decoded = opcode.mnemonic();
+
+        switch (opcode) {
+            case HALT -> { cpu.halt(); decoded = "halt"; }
+            case NOP -> decoded = "nop";
+            case MOVI -> {
+                int dst = registerOperand(address + 1, address);
+                long value = readI64(address + 2);
+                cpu.register(dst, value); cpu.flags(value);
+                decoded = "movi r" + dst + ", " + value;
+            }
+            case MOV -> {
+                int dst = registerOperand(address + 1, address), src = registerOperand(address + 2, address);
+                long value = cpu.register(src); cpu.register(dst, value); cpu.flags(value);
+                decoded = "mov r" + dst + ", r" + src;
+            }
+            case ADD, SUB, MUL, DIV, MOD -> decoded = arithmetic(opcode, address);
+            case CMP -> {
+                int left = registerOperand(address + 1, address), right = registerOperand(address + 2, address);
+                cpu.comparison(cpu.register(left), cpu.register(right));
+                decoded = "cmp r" + left + ", r" + right;
+            }
+            case JMP, JZ, JNZ, JN -> {
+                int target = readI32(address + 1);
+                boolean taken = switch (opcode) {
+                    case JMP -> true; case JZ -> cpu.zero(); case JNZ -> !cpu.zero(); case JN -> cpu.negative();
+                    default -> false;
+                };
+                if (taken) jump(target, address);
+                decoded = opcode.mnemonic() + " 0x" + String.format("%04x", target) + (taken ? " [taken]" : "");
+            }
+            case LOAD64 -> {
+                int dst = registerOperand(address + 1, address), addressRegister = registerOperand(address + 2, address);
+                int memoryAddress = memoryAddress(cpu.register(addressRegister), address);
+                long value = readMemoryI64(memoryAddress, address);
+                cpu.register(dst, value); cpu.flags(value);
+                decoded = "load64 r" + dst + ", [r" + addressRegister + "]";
+            }
+            case STORE64 -> {
+                int src = registerOperand(address + 1, address), addressRegister = registerOperand(address + 2, address);
+                int memoryAddress = memoryAddress(cpu.register(addressRegister), address);
+                writeMemoryI64(memoryAddress, cpu.register(src), address);
+                decoded = "store64 r" + src + ", [r" + addressRegister + "]";
+            }
+            case PUSH -> {
+                int src = registerOperand(address + 1, address);
+                push(cpu.register(src), address);
+                decoded = "push r" + src;
+            }
+            case POP -> {
+                int dst = registerOperand(address + 1, address);
+                long value = pop(address); cpu.register(dst, value); cpu.flags(value);
+                decoded = "pop r" + dst;
+            }
+            case CALL -> {
+                int target = readI32(address + 1);
+                push(next, address); jump(target, address);
+                decoded = "call 0x" + String.format("%04x", target);
+            }
+            case RET -> {
+                int target = checkedAddress(pop(address), address, "return address");
+                jump(target, address); decoded = "ret";
+            }
+        }
+        cpu.incrementSteps();
+        return new TraceEntry(address, encoded, decoded, cpu.snapshot());
+    }
+
+    public long readLong(int address) { return readMemoryI64(address, cpu.pc()); }
+
+    private String arithmetic(Opcode opcode, int address) {
+        int dst = registerOperand(address + 1, address);
+        int left = registerOperand(address + 2, address);
+        int right = registerOperand(address + 3, address);
+        long a = cpu.register(left), b = cpu.register(right);
+        long result = switch (opcode) {
+            case ADD -> a + b; case SUB -> a - b; case MUL -> a * b;
+            case DIV -> { if (b == 0) throw fault(address, "division by zero"); yield a / b; }
+            case MOD -> { if (b == 0) throw fault(address, "modulo by zero"); yield a % b; }
+            default -> throw new IllegalStateException("not arithmetic: " + opcode);
+        };
+        cpu.register(dst, result); cpu.flags(result);
+        return opcode.mnemonic() + " r" + dst + ", r" + left + ", r" + right;
+    }
+
+    private int instructionByte(int at, int faultAddress) {
+        if (at < 0 || at >= programEnd) throw fault(faultAddress, "instruction fetch outside loaded program: " + at);
+        return ram[at] & 0xff;
+    }
+
+    private void requireInstructionRange(int start, int length, int faultAddress) {
+        if (start < 0 || length < 0 || start > programEnd - length) {
+            throw fault(faultAddress, "truncated instruction");
+        }
+    }
+
+    private int registerOperand(int at, int faultAddress) {
+        int register = ram[at] & 0xff;
+        if (register >= XCpu.REGISTER_COUNT) throw fault(faultAddress, "invalid register r" + register);
+        return register;
+    }
+
+    private int readI32(int at) {
+        return (ram[at] & 0xff) | (ram[at + 1] & 0xff) << 8
+            | (ram[at + 2] & 0xff) << 16 | ram[at + 3] << 24;
+    }
+
+    private long readI64(int at) {
+        long value = 0;
+        for (int i = 0; i < 8; i++) value |= (long) (ram[at + i] & 0xff) << (i * 8);
+        return value;
+    }
+
+    private long readMemoryI64(int at, int faultAddress) {
+        requireMemoryRange(at, 8, faultAddress);
+        return readI64(at);
+    }
+
+    private void writeMemoryI64(int at, long value, int faultAddress) {
+        requireMemoryRange(at, 8, faultAddress);
+        for (int i = 0; i < 8; i++) ram[at + i] = (byte) (value >>> (i * 8));
+    }
+
+    private void requireMemoryRange(int start, int length, int faultAddress) {
+        if (start < 0 || start > ram.length - length) {
+            throw fault(faultAddress, "memory access outside RAM: " + start + ".." + (start + length));
+        }
+    }
+
+    private int memoryAddress(long value, int faultAddress) {
+        return checkedAddress(value, faultAddress, "memory address");
+    }
+
+    private int checkedAddress(long value, int faultAddress, String kind) {
+        if (value < 0 || value > Integer.MAX_VALUE) throw fault(faultAddress, kind + " out of range: " + value);
+        return (int) value;
+    }
+
+    private void jump(int target, int faultAddress) {
+        if (target < 0 || target >= programEnd) throw fault(faultAddress, "jump target outside loaded program: " + target);
+        cpu.pc(target);
+    }
+
+    private void push(long value, int faultAddress) {
+        long next = cpu.register(XCpu.STACK_POINTER) - 8;
+        int address = checkedAddress(next, faultAddress, "stack pointer");
+        writeMemoryI64(address, value, faultAddress);
+        cpu.register(XCpu.STACK_POINTER, address);
+    }
+
+    private long pop(int faultAddress) {
+        int address = checkedAddress(cpu.register(XCpu.STACK_POINTER), faultAddress, "stack pointer");
+        if (address > ram.length - 8) throw fault(faultAddress, "stack underflow");
+        long value = readMemoryI64(address, faultAddress);
+        cpu.register(XCpu.STACK_POINTER, address + 8L);
+        return value;
+    }
+
+    private static MachineFault fault(int address, String message) { return new MachineFault(address, message); }
+
+    public record TraceEntry(int address, byte[] encoded, String instruction, XCpu.Snapshot after) {
+        public TraceEntry { encoded = Arrays.copyOf(encoded, encoded.length); }
+        @Override public byte[] encoded() { return Arrays.copyOf(encoded, encoded.length); }
+        public String format() {
+            return String.format("%04x: %-29s %-28s ; pc=%04x r0=%d Z=%d N=%d",
+                address, HexProgram.format(encoded), instruction, after.pc(), after.register(0),
+                after.zero() ? 1 : 0, after.negative() ? 1 : 0);
+        }
+    }
+
+    public record ExecutionResult(XCpu.Snapshot cpu, List<TraceEntry> trace) {
+        public ExecutionResult { trace = List.copyOf(trace); }
     }
 }

@@ -67,6 +67,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
 - 能跑手写机器码程序。
 - CLI：`xlang run <hex-program>`、`xlang trace <hex-program>`。
 
+**已完成。**
+
 ## P5 — XOS
 
 - 页表、`mmap`/`brk`、保护位、缺页报告。
