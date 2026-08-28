@@ -10,6 +10,7 @@ public final class XMachine {
     public static final long DEFAULT_STEP_LIMIT = 1_000_000;
 
     private final byte[] ram;
+    private final XOS os;
     private XCpu cpu = new XCpu();
     private int programEnd;
 
@@ -18,19 +19,19 @@ public final class XMachine {
     public XMachine(int ramSize) {
         if (ramSize < 16) throw new IllegalArgumentException("RAM must be at least 16 bytes");
         ram = new byte[ramSize];
+        os = new XOS(ram);
     }
 
     public XCpu cpu() { return cpu; }
+    public XOS os() { return os; }
     public int ramSize() { return ram.length; }
 
     public void load(byte[] program) {
         if (program.length == 0) throw new IllegalArgumentException("program is empty");
-        if (program.length > ram.length) throw new IllegalArgumentException("program does not fit in RAM");
-        Arrays.fill(ram, (byte) 0);
-        System.arraycopy(program, 0, ram, 0, program.length);
+        os.boot(program);
         programEnd = program.length;
         cpu = new XCpu();
-        cpu.register(XCpu.STACK_POINTER, ram.length);
+        cpu.register(XCpu.STACK_POINTER, XOS.STACK_TOP);
     }
 
     public ExecutionResult run() { return run(DEFAULT_STEP_LIMIT, false); }
@@ -44,7 +45,7 @@ public final class XMachine {
             TraceEntry entry = step();
             if (trace) entries.add(entry);
         }
-        return new ExecutionResult(cpu.snapshot(), entries);
+        return new ExecutionResult(cpu.snapshot(), entries, os.outputText());
     }
 
     public TraceEntry step() {
@@ -55,7 +56,10 @@ public final class XMachine {
         Opcode opcode = Opcode.fromByte(opcodeByte);
         if (opcode == null) throw fault(address, "unknown opcode 0x" + String.format("%02x", opcodeByte));
         requireInstructionRange(address, opcode.size(), address);
-        byte[] encoded = Arrays.copyOfRange(ram, address, address + opcode.size());
+        byte[] encoded = new byte[opcode.size()];
+        for (int offset = 0; offset < encoded.length; offset++) {
+            encoded[offset] = (byte) os.readByte(address + offset, Access.EXECUTE, address);
+        }
         int next = address + opcode.size();
         cpu.pc(next);
         String decoded = opcode.mnemonic();
@@ -121,12 +125,16 @@ public final class XMachine {
                 int target = checkedAddress(pop(address), address, "return address");
                 jump(target, address); decoded = "ret";
             }
+            case SYSCALL -> {
+                long result = os.syscall(cpu.register(0), cpu.register(1), cpu.register(2), cpu.register(3), address);
+                cpu.register(0, result); cpu.flags(result); decoded = "syscall";
+            }
         }
         cpu.incrementSteps();
         return new TraceEntry(address, encoded, decoded, cpu.snapshot());
     }
 
-    public long readLong(int address) { return readMemoryI64(address, cpu.pc()); }
+    public long readLong(int address) { return os.readLong(address, cpu.pc()); }
 
     private String arithmetic(Opcode opcode, int address) {
         int dst = registerOperand(address + 1, address);
@@ -145,7 +153,7 @@ public final class XMachine {
 
     private int instructionByte(int at, int faultAddress) {
         if (at < 0 || at >= programEnd) throw fault(faultAddress, "instruction fetch outside loaded program: " + at);
-        return ram[at] & 0xff;
+        return os.readByte(at, Access.EXECUTE, faultAddress);
     }
 
     private void requireInstructionRange(int start, int length, int faultAddress) {
@@ -155,36 +163,28 @@ public final class XMachine {
     }
 
     private int registerOperand(int at, int faultAddress) {
-        int register = ram[at] & 0xff;
+        int register = instructionByte(at, faultAddress);
         if (register >= XCpu.REGISTER_COUNT) throw fault(faultAddress, "invalid register r" + register);
         return register;
     }
 
     private int readI32(int at) {
-        return (ram[at] & 0xff) | (ram[at + 1] & 0xff) << 8
-            | (ram[at + 2] & 0xff) << 16 | ram[at + 3] << 24;
+        return instructionByte(at, at) | instructionByte(at + 1, at) << 8
+            | instructionByte(at + 2, at) << 16 | instructionByte(at + 3, at) << 24;
     }
 
     private long readI64(int at) {
         long value = 0;
-        for (int i = 0; i < 8; i++) value |= (long) (ram[at + i] & 0xff) << (i * 8);
+        for (int i = 0; i < 8; i++) value |= (long) instructionByte(at + i, at) << (i * 8);
         return value;
     }
 
     private long readMemoryI64(int at, int faultAddress) {
-        requireMemoryRange(at, 8, faultAddress);
-        return readI64(at);
+        return os.readLong(at, faultAddress);
     }
 
     private void writeMemoryI64(int at, long value, int faultAddress) {
-        requireMemoryRange(at, 8, faultAddress);
-        for (int i = 0; i < 8; i++) ram[at + i] = (byte) (value >>> (i * 8));
-    }
-
-    private void requireMemoryRange(int start, int length, int faultAddress) {
-        if (start < 0 || start > ram.length - length) {
-            throw fault(faultAddress, "memory access outside RAM: " + start + ".." + (start + length));
-        }
+        os.writeLong(at, value, faultAddress);
     }
 
     private int memoryAddress(long value, int faultAddress) {
@@ -210,7 +210,7 @@ public final class XMachine {
 
     private long pop(int faultAddress) {
         int address = checkedAddress(cpu.register(XCpu.STACK_POINTER), faultAddress, "stack pointer");
-        if (address > ram.length - 8) throw fault(faultAddress, "stack underflow");
+        if (address > XOS.STACK_TOP - 8) throw fault(faultAddress, "stack underflow");
         long value = readMemoryI64(address, faultAddress);
         cpu.register(XCpu.STACK_POINTER, address + 8L);
         return value;
@@ -228,7 +228,7 @@ public final class XMachine {
         }
     }
 
-    public record ExecutionResult(XCpu.Snapshot cpu, List<TraceEntry> trace) {
+    public record ExecutionResult(XCpu.Snapshot cpu, List<TraceEntry> trace, String output) {
         public ExecutionResult { trace = List.copyOf(trace); }
     }
 }

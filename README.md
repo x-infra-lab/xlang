@@ -21,9 +21,9 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P4 -- XMachine + XCPU.** Hand-assembled bytecode now runs on an observable
-64-bit virtual CPU with registers, flags, RAM, arithmetic, branches, memory,
-stack and calls. `run` prints final state; `trace` logs every instruction.
+**P5 -- XOS virtual memory.** Every instruction and data access now passes
+through a protected page table. XOS provides `brk`, anonymous mappings, a high
+stack, page-fault diagnostics, memory-map visualisation, and a `write` syscall.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
@@ -31,6 +31,7 @@ stack and calls. `run` prints final state; `trace` logs every instruction.
 - [Phase 2 -- Types and lexical scopes](docs/phases/phase-2.md)
 - [Phase 3 -- Three-address XIR](docs/phases/phase-3.md)
 - [Phase 4 -- XMachine and XCPU](docs/phases/phase-4.md)
+- [Phase 5 -- XOS virtual memory](docs/phases/phase-5.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -70,6 +71,8 @@ stack and calls. `run` prints final state; `trace` logs every instruction.
 ./gradlew :xlang-cli:run --args="check program.xl"
 ./gradlew :xlang-cli:run --args="ir program.xl"
 ./gradlew :xlang-cli:run --args="run '10 00 2a 00 00 00 00 00 00 00 00'"
+./gradlew :xlang-cli:run --args="mem show"
+./gradlew :xlang-cli:run --args="mem map 512 rw"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

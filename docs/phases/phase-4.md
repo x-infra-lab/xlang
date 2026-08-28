@@ -31,6 +31,7 @@ from RAM, one fetch/decode/execute step at a time.
 | `50`–`51` | `reg:u8` | `push`, `pop` |
 | `60` | `target:i32` | `call` |
 | `61` | — | `ret` |
+| `70` | — | `syscall` (added by P5) |
 
 Registers are encoded as `00`–`07`. Multi-byte fields are little-endian.
 

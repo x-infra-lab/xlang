@@ -81,6 +81,8 @@ operator precedence, and at least four error-recovery cases.
 - Simple `write` syscall so `run` can produce output.
 - CLI: `xlang mem show`, `xlang mem map`.
 
+**Done.**
+
 ## P6 — xlangc backend
 
 - XIR -> XMachine ISA. Emits `.xo` objects.

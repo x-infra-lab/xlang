@@ -8,6 +8,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import com.xlang.vm.Assembler;
+import com.xlang.vm.HexProgram;
+import com.xlang.vm.XOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -33,10 +37,10 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP4() {
+    void phaseCommandReportsP5() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P4"));
+        assertTrue(cap.stdout.contains("P5"));
     }
 
     @Test
@@ -86,6 +90,30 @@ class MainTest {
         Capture invalid = Capture.run(() -> Main.run(new String[] {"run", "zz"}));
         assertNotEquals(0, invalid.exit);
         assertTrue(invalid.stderr.contains("invalid hex digit"));
+    }
+
+    @Test
+    void writeSyscallProducesOutputAndMemCommandsVisualizeMappings() {
+        byte[] message = "Hi\n".getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = new Assembler()
+            .movi(0, XOS.SYS_WRITE).movi(1, 1).movi(2, 42).movi(3, message.length)
+            .syscall().halt().raw(message).bytes();
+        Capture run = Capture.run(() -> Main.run(new String[] {"run", HexProgram.format(bytes)}));
+        assertEquals(0, run.exit);
+        assertTrue(run.stdout.contains("Hi\n"));
+        assertTrue(run.stdout.contains("r0 = 3"));
+
+        Capture show = Capture.run(() -> Main.run(new String[] {"mem", "show"}));
+        assertEquals(0, show.exit);
+        assertTrue(show.stdout.contains("virtual range"));
+        assertTrue(show.stdout.contains("code"));
+        assertTrue(show.stdout.contains("stack"));
+
+        Capture map = Capture.run(() -> Main.run(new String[] {"mem", "map", "512", "r--"}));
+        assertEquals(0, map.exit);
+        assertTrue(map.stdout.contains("mapped 512 bytes at 0x00040000"));
+        assertTrue(map.stdout.contains("cli-mmap"));
+        assertTrue(map.stdout.contains("r--"));
     }
 
     @Test

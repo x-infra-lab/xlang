@@ -19,9 +19,8 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P4 -- XMachine + XCPU。** 手写字节码现在可以运行在一台可观察的 64 位虚拟
-CPU 上，支持寄存器、标志、RAM、算术、分支、内存、栈和调用。`run` 打印最终
-状态，`trace` 记录每条指令。
+**P5 -- XOS 虚拟内存。** 现在每次取指和数据访问都会经过带权限的页表。XOS
+提供 `brk`、匿名映射、高地址栈、缺页诊断、内存映射可视化和 `write` syscall。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
 - [阶段 0 -- 骨架](docs/phases/phase-0.zh-CN.md)
@@ -29,6 +28,7 @@ CPU 上，支持寄存器、标志、RAM、算术、分支、内存、栈和调�
 - [阶段 2 -- 类型与词法作用域](docs/phases/phase-2.zh-CN.md)
 - [阶段 3 -- 三地址 XIR](docs/phases/phase-3.zh-CN.md)
 - [阶段 4 -- XMachine 与 XCPU](docs/phases/phase-4.zh-CN.md)
+- [阶段 5 -- XOS 虚拟内存](docs/phases/phase-5.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
@@ -68,6 +68,8 @@ CPU 上，支持寄存器、标志、RAM、算术、分支、内存、栈和调�
 ./gradlew :xlang-cli:run --args="check program.xl"
 ./gradlew :xlang-cli:run --args="ir program.xl"
 ./gradlew :xlang-cli:run --args="run '10 00 2a 00 00 00 00 00 00 00 00'"
+./gradlew :xlang-cli:run --args="mem show"
+./gradlew :xlang-cli:run --args="mem map 512 rw"
 ```
 
 构建使用 Gradle 的 Java 21 toolchain；如果本地找不到 JDK 21，Gradle 会自动下载。

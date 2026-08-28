@@ -12,7 +12,8 @@ public enum Opcode {
     JMP(0x31, 5, "jmp"), JZ(0x32, 5, "jz"), JNZ(0x33, 5, "jnz"),
     JN(0x34, 5, "jn"), LOAD64(0x40, 3, "load64"), STORE64(0x41, 3, "store64"),
     PUSH(0x50, 2, "push"), POP(0x51, 2, "pop"),
-    CALL(0x60, 5, "call"), RET(0x61, 1, "ret");
+    CALL(0x60, 5, "call"), RET(0x61, 1, "ret"),
+    SYSCALL(0x70, 1, "syscall");
 
     private static final Map<Integer, Opcode> BY_CODE = new HashMap<>();
     static { for (Opcode opcode : values()) BY_CODE.put(opcode.code, opcode); }

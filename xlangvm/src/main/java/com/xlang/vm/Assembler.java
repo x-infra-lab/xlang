@@ -31,5 +31,7 @@ public final class Assembler {
     public Assembler push(int source) { return opcode(Opcode.PUSH).register(source); }
     public Assembler pop(int target) { return opcode(Opcode.POP).register(target); }
     public Assembler ret() { return opcode(Opcode.RET); }
+    public Assembler syscall() { return opcode(Opcode.SYSCALL); }
+    public Assembler raw(byte[] values) { bytes.writeBytes(values); return this; }
     public byte[] bytes() { return bytes.toByteArray(); }
 }

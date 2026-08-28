@@ -7,6 +7,8 @@ import com.xlang.vm.HexProgram;
 import com.xlang.vm.MachineFault;
 import com.xlang.vm.XCpu;
 import com.xlang.vm.XMachine;
+import com.xlang.vm.Protection;
+import java.util.EnumSet;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,7 +26,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P4";
+    public static final String VERSION = "0.1.0-P5";
 
     private Main() {}
 
@@ -54,8 +56,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P4 (XMachine + XCPU)");
-                System.out.println("Next milestone: P5 XOS memory subsystem");
+                System.out.println("Current phase: P5 (XOS virtual memory + syscalls)");
+                System.out.println("Next milestone: P6 xlangc backend to XMachine ISA");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -64,7 +66,8 @@ public final class Main {
             case "ir" -> ir(rest);
             case "run" -> machine(rest, false);
             case "trace" -> machine(rest, true);
-            case "compile", "link", "mem", "layout", "syscall-trace" ->
+            case "mem" -> memory(rest);
+            case "compile", "link", "layout", "syscall-trace" ->
                 stub(cmd);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
@@ -72,6 +75,31 @@ public final class Main {
                 yield 2;
             }
         };
+    }
+
+    private static int memory(String[] args) {
+        if (args.length == 0 || (!args[0].equals("show") && !args[0].equals("map"))) {
+            System.err.println("Usage: xlang mem show | mem map <bytes> [rwx]");
+            return 64;
+        }
+        try {
+            XMachine machine = new XMachine();
+            machine.load(new byte[] {0});
+            if (args[0].equals("show")) {
+                if (args.length != 1) throw new IllegalArgumentException("mem show takes no arguments");
+            } else {
+                if (args.length < 2 || args.length > 3) throw new IllegalArgumentException("mem map requires <bytes> [rwx]");
+                int length = Integer.decode(args[1]);
+                EnumSet<Protection> protection = Protection.parse(args.length == 3 ? args[2] : "rw");
+                int address = machine.os().mmap(length, protection, "cli-mmap");
+                System.out.println("mapped " + length + " bytes at 0x" + String.format("%08x", address));
+            }
+            System.out.print(machine.os().describeMemory());
+            return 0;
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            System.err.println("xlang: " + ex.getMessage());
+            return 65;
+        }
     }
 
     private static int machine(String[] args, boolean trace) {
@@ -85,6 +113,7 @@ public final class Main {
             machine.load(program);
             var result = machine.run(XMachine.DEFAULT_STEP_LIMIT, trace);
             if (trace) result.trace().forEach(entry -> System.out.println(entry.format()));
+            System.out.print(result.output());
             XCpu.Snapshot cpu = result.cpu();
             System.out.println("halted after " + cpu.steps() + " instructions");
             for (int i = 0; i < XCpu.REGISTER_COUNT; i++) {
@@ -143,7 +172,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P4. "
+            "xlang " + cmd + ": not implemented yet in P5. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -179,7 +208,8 @@ public final class Main {
             "  link <files>          [P7] Link .xo objects into a .xex executable",
             "  run <hex-program>     Run hand-assembled bytes on the P4 XMachine",
             "  trace <hex-program>   Same as run, but log every instruction",
-            "  mem <subcmd>          [P5] Inspect virtual memory / page table / heap",
+            "  mem show              Show the P5 process page table",
+            "  mem map <bytes> [rwx] Add and display an anonymous mapping",
             "  layout <type>         [P9] Print struct/union memory layout",
             "  syscall-trace <file>  [P8] strace-style syscall log",
             "",

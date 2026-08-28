@@ -75,6 +75,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
 - 简单的 `write` syscall，让 `run` 能真正产生输出。
 - CLI：`xlang mem show`、`xlang mem map`。
 
+**已完成。**
+
 ## P6 — xlangc 后端
 
 - XIR -> XMachine ISA，输出 `.xo` 目标文件。

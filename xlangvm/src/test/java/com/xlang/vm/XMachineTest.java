@@ -22,15 +22,16 @@ class XMachineTest {
 
     @Test void movesValuesThroughMemoryAndStack() {
         byte[] program = new Assembler()
-            .movi(0, 123456789).movi(1, 128)
+            .movi(0, 123456789).movi(1, XOS.HEAP_BASE)
             .memory(Opcode.STORE64, 0, 1).memory(Opcode.LOAD64, 2, 1)
             .push(2).pop(3).halt().bytes();
         XMachine machine = machine(program);
+        machine.os().brk(XOS.HEAP_BASE + 8);
         machine.run();
         assertEquals(123456789, machine.cpu().register(2));
         assertEquals(123456789, machine.cpu().register(3));
-        assertEquals(123456789, machine.readLong(128));
-        assertEquals(machine.ramSize(), machine.cpu().register(XCpu.STACK_POINTER));
+        assertEquals(123456789, machine.readLong(XOS.HEAP_BASE));
+        assertEquals(XOS.STACK_TOP, machine.cpu().register(XCpu.STACK_POINTER));
     }
 
     @Test void callsAndReturnsUsingTheMachineStack() {
@@ -38,7 +39,7 @@ class XMachineTest {
         XMachine machine = machine(program);
         machine.run();
         assertEquals(42, machine.cpu().register(0));
-        assertEquals(machine.ramSize(), machine.cpu().register(XCpu.STACK_POINTER));
+        assertEquals(XOS.STACK_TOP, machine.cpu().register(XCpu.STACK_POINTER));
     }
 
     @Test void tracesRawBytesDisassemblyAndPostState() {
@@ -78,7 +79,7 @@ class XMachineTest {
     }
 
     private static XMachine machine(byte[] program) {
-        XMachine machine = new XMachine(256);
+        XMachine machine = new XMachine(4096);
         machine.load(program);
         return machine;
     }
