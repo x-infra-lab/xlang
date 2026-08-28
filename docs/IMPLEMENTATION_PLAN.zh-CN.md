@@ -82,6 +82,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
 - XIR -> XMachine ISA，输出 `.xo` 目标文件。
 - CLI：`xlang compile <file>` 变为真实实现。
 
+**已完成。**
+
 ## P7 — xld
 
 - 读入 `.xo`，合并段，解析全局符号，回填重定位，输出 `.xex`；verbose

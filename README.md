@@ -21,9 +21,9 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P5 -- XOS virtual memory.** Every instruction and data access now passes
-through a protected page table. XOS provides `brk`, anonymous mappings, a high
-stack, page-fault diagnostics, memory-map visualisation, and a `write` syscall.
+**P6 -- xlangc backend.** Typed XIR now lowers to XMachine instructions using
+an explicit stack-frame ABI. The compiler emits deterministic `.xo` objects
+with text/data sections, symbols, strings, and relocations ready for P7 linking.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
@@ -32,6 +32,7 @@ stack, page-fault diagnostics, memory-map visualisation, and a `write` syscall.
 - [Phase 3 -- Three-address XIR](docs/phases/phase-3.md)
 - [Phase 4 -- XMachine and XCPU](docs/phases/phase-4.md)
 - [Phase 5 -- XOS virtual memory](docs/phases/phase-5.md)
+- [Phase 6 -- Backend and .xo objects](docs/phases/phase-6.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -73,6 +74,7 @@ stack, page-fault diagnostics, memory-map visualisation, and a `write` syscall.
 ./gradlew :xlang-cli:run --args="run '10 00 2a 00 00 00 00 00 00 00 00'"
 ./gradlew :xlang-cli:run --args="mem show"
 ./gradlew :xlang-cli:run --args="mem map 512 rw"
+./gradlew :xlang-cli:run --args="compile examples/hello.xl -o /tmp/hello.xo"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

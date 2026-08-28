@@ -1,6 +1,7 @@
 package com.xlang.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import com.xlang.vm.Assembler;
 import com.xlang.vm.HexProgram;
 import com.xlang.vm.XOS;
+import com.xlang.compiler.object.XObjectIO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -37,10 +39,10 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP5() {
+    void phaseCommandReportsP6() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P5"));
+        assertTrue(cap.stdout.contains("P6"));
     }
 
     @Test
@@ -117,6 +119,25 @@ class MainTest {
     }
 
     @Test
+    void compileWritesReadableObjectAndRejectsInvalidSource(@TempDir Path directory) throws Exception {
+        Path source = directory.resolve("answer.xl");
+        Path object = directory.resolve("custom.xo");
+        Files.writeString(source, "fn main() -> int { return 40 + 2; }");
+        Capture ok = Capture.run(() -> Main.run(new String[] {"compile", source.toString(), "-o", object.toString()}));
+        assertEquals(0, ok.exit);
+        assertTrue(ok.stdout.contains("wrote " + object));
+        assertTrue(Files.exists(object));
+        assertTrue(XObjectIO.read(object).symbols().stream().anyMatch(symbol -> symbol.name().equals("main")));
+
+        Path invalid = directory.resolve("invalid.xl");
+        Files.writeString(invalid, "fn main() -> int { return true; }");
+        Capture bad = Capture.run(() -> Main.run(new String[] {"compile", invalid.toString()}));
+        assertNotEquals(0, bad.exit);
+        assertTrue(bad.stderr.contains("expects int but got bool"));
+        assertFalse(Files.exists(directory.resolve("invalid.xo")));
+    }
+
+    @Test
     void helpMentionsFrontEndCommands() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"help"}));
         assertTrue(cap.stdout.contains("tokens"));
@@ -133,10 +154,10 @@ class MainTest {
 
     @Test
     void stubbedCommandsFailLoudlyButPointAtAPhase() {
-        Capture cap = Capture.run(() -> Main.run(new String[] {"compile", "foo.xl"}));
+        Capture cap = Capture.run(() -> Main.run(new String[] {"link", "foo.xo"}));
         assertNotEquals(0, cap.exit);
-        assertTrue(cap.stderr.contains("P6"),
-            "compile stub should announce it is planned for P6, was: " + cap.stderr);
+        assertTrue(cap.stderr.contains("P7"),
+            "link stub should announce it is planned for P7, was: " + cap.stderr);
     }
 
     /** Tiny stdout/stderr capture helper so tests don't leak println noise. */

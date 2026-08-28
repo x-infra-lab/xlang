@@ -88,6 +88,8 @@ operator precedence, and at least four error-recovery cases.
 - XIR -> XMachine ISA. Emits `.xo` objects.
 - CLI: `xlang compile <file>` becomes real.
 
+**Done.**
+
 ## P7 — xld
 
 - Reads `.xo` files, merges sections, resolves globals, patches

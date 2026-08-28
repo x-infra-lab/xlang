@@ -9,6 +9,8 @@ import com.xlang.compiler.sema.TypeCheckResult;
 import com.xlang.compiler.sema.TypeChecker;
 import com.xlang.compiler.xir.IrResult;
 import com.xlang.compiler.xir.Lowerer;
+import com.xlang.compiler.backend.CompileResult;
+import com.xlang.compiler.backend.XBackend;
 import java.util.IdentityHashMap;
 
 /**
@@ -51,5 +53,11 @@ public final class Xlangc {
         CheckResult checked = check(source);
         if (checked.hasErrors()) return new IrResult(null, checked.diagnostics());
         return new IrResult(new Lowerer(checked.program(), checked.typeCheck()).lower(), java.util.List.of());
+    }
+
+    public static CompileResult compile(String source) {
+        IrResult lowered = lower(source);
+        if (lowered.hasErrors()) return new CompileResult(null, lowered.diagnostics());
+        return new CompileResult(new XBackend().compile(lowered.module()), java.util.List.of());
     }
 }

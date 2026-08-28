@@ -3,6 +3,7 @@ package com.xlang.cli;
 import com.xlang.compiler.Xlangc;
 import com.xlang.compiler.print.AstPrinter;
 import com.xlang.compiler.xir.XirPrinter;
+import com.xlang.compiler.object.XObjectIO;
 import com.xlang.vm.HexProgram;
 import com.xlang.vm.MachineFault;
 import com.xlang.vm.XCpu;
@@ -26,7 +27,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P5";
+    public static final String VERSION = "0.1.0-P6";
 
     private Main() {}
 
@@ -56,8 +57,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P5 (XOS virtual memory + syscalls)");
-                System.out.println("Next milestone: P6 xlangc backend to XMachine ISA");
+                System.out.println("Current phase: P6 (xlangc backend + .xo objects)");
+                System.out.println("Next milestone: P7 xld linker + relocations");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -67,7 +68,8 @@ public final class Main {
             case "run" -> machine(rest, false);
             case "trace" -> machine(rest, true);
             case "mem" -> memory(rest);
-            case "compile", "link", "layout", "syscall-trace" ->
+            case "compile" -> compile(rest);
+            case "link", "layout", "syscall-trace" ->
                 stub(cmd);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
@@ -75,6 +77,36 @@ public final class Main {
                 yield 2;
             }
         };
+    }
+
+    private static int compile(String[] args) {
+        if (args.length != 1 && !(args.length == 3 && args[1].equals("-o"))) {
+            System.err.println("Usage: xlang compile <file> [-o <output.xo>]");
+            return 64;
+        }
+        Path sourcePath = Path.of(args[0]);
+        Path outputPath = args.length == 3 ? Path.of(args[2]) : defaultObjectPath(sourcePath);
+        final String source;
+        try { source = Files.readString(sourcePath); }
+        catch (IOException ex) { System.err.println("xlang: cannot read '" + sourcePath + "': " + ex.getMessage()); return 66; }
+        var result = Xlangc.compile(source);
+        result.diagnostics().forEach(d -> System.err.println(d.format(sourcePath.toString())));
+        if (result.hasErrors()) return 1;
+        try { XObjectIO.write(outputPath, result.object()); }
+        catch (IOException ex) { System.err.println("xlang: cannot write '" + outputPath + "': " + ex.getMessage()); return 73; }
+        var object = result.object();
+        System.out.println("wrote " + outputPath + " (text=" + object.text().length
+            + ", data=" + object.data().length + ", symbols=" + object.symbols().size()
+            + ", relocations=" + object.relocations().size() + ")");
+        return 0;
+    }
+
+    private static Path defaultObjectPath(Path source) {
+        String name = source.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String objectName = (dot > 0 ? name.substring(0, dot) : name) + ".xo";
+        Path parent = source.getParent();
+        return parent == null ? Path.of(objectName) : parent.resolve(objectName);
     }
 
     private static int memory(String[] args) {
@@ -172,7 +204,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P5. "
+            "xlang " + cmd + ": not implemented yet in P6. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -204,7 +236,7 @@ public final class Main {
             "  parse <file>          Parse source and print its AST",
             "  check <file>          Run lexer, parser, and P2 type checker",
             "  ir <file>             Lower checked source to P3 three-address XIR",
-            "  compile <file>        [P6] Compile .xl source to a .xo object",
+            "  compile <file> [-o x] Compile source to a relocatable .xo object",
             "  link <files>          [P7] Link .xo objects into a .xex executable",
             "  run <hex-program>     Run hand-assembled bytes on the P4 XMachine",
             "  trace <hex-program>   Same as run, but log every instruction",
