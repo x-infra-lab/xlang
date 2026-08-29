@@ -14,6 +14,8 @@ import com.xlang.vm.Assembler;
 import com.xlang.vm.HexProgram;
 import com.xlang.vm.XOS;
 import com.xlang.compiler.object.XObjectIO;
+import com.xlang.linker.XExecutableIO;
+import com.xlang.vm.XMachine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,10 +41,10 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP6() {
+    void phaseCommandReportsP7() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P6"));
+        assertTrue(cap.stdout.contains("P7"));
     }
 
     @Test
@@ -138,6 +140,30 @@ class MainTest {
     }
 
     @Test
+    void linkWritesRunnableExecutableAndPrintsRelocations(@TempDir Path directory) throws Exception {
+        Path source = directory.resolve("answer.xl");
+        Path object = directory.resolve("answer.xo");
+        Path executablePath = directory.resolve("answer.xex");
+        Files.writeString(source, "fn main() -> int { return 40 + 2; }");
+        assertEquals(0, Capture.run(() -> Main.run(new String[] {
+            "compile", source.toString(), "-o", object.toString()
+        })).exit);
+
+        Capture linked = Capture.run(() -> Main.run(new String[] {
+            "link", object.toString(), "-o", executablePath.toString(), "--verbose"
+        }));
+        assertEquals(0, linked.exit);
+        assertTrue(linked.stdout.contains("relocate"));
+        assertTrue(linked.stdout.contains("byte ["));
+        assertTrue(linked.stdout.contains("wrote " + executablePath));
+        var executable = XExecutableIO.read(executablePath);
+        XMachine machine = new XMachine();
+        executable.loadInto(machine);
+        machine.run();
+        assertEquals(42, machine.cpu().register(0));
+    }
+
+    @Test
     void helpMentionsFrontEndCommands() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"help"}));
         assertTrue(cap.stdout.contains("tokens"));
@@ -154,10 +180,10 @@ class MainTest {
 
     @Test
     void stubbedCommandsFailLoudlyButPointAtAPhase() {
-        Capture cap = Capture.run(() -> Main.run(new String[] {"link", "foo.xo"}));
+        Capture cap = Capture.run(() -> Main.run(new String[] {"syscall-trace", "foo.xex"}));
         assertNotEquals(0, cap.exit);
-        assertTrue(cap.stderr.contains("P7"),
-            "link stub should announce it is planned for P7, was: " + cap.stderr);
+        assertTrue(cap.stderr.contains("P8"),
+            "stub should announce it is planned for P8, was: " + cap.stderr);
     }
 
     /** Tiny stdout/stderr capture helper so tests don't leak println noise. */

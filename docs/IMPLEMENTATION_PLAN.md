@@ -96,6 +96,8 @@ operator precedence, and at least four error-recovery cases.
   relocations, writes `.xex`. Logs every patched byte in verbose mode.
 - CLI: `xlang link` becomes real.
 
+**Done.**
+
 ## P8 — xrt
 
 - Mini libc written in xlang: `start`, `write`, `exit`, `malloc`,

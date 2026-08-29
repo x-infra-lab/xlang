@@ -1,9 +1,13 @@
 package com.xlang.cli;
 
 import com.xlang.compiler.Xlangc;
+import com.xlang.compiler.object.XObject;
 import com.xlang.compiler.print.AstPrinter;
 import com.xlang.compiler.xir.XirPrinter;
 import com.xlang.compiler.object.XObjectIO;
+import com.xlang.linker.LinkException;
+import com.xlang.linker.XExecutableIO;
+import com.xlang.linker.Xld;
 import com.xlang.vm.HexProgram;
 import com.xlang.vm.MachineFault;
 import com.xlang.vm.XCpu;
@@ -14,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,7 +32,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P6";
+    public static final String VERSION = "0.1.0-P7";
 
     private Main() {}
 
@@ -57,8 +62,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P6 (xlangc backend + .xo objects)");
-                System.out.println("Next milestone: P7 xld linker + relocations");
+                System.out.println("Current phase: P7 (xld linker + XE01 executables)");
+                System.out.println("Next milestone: P8 xrt mini libc + syscall tracing");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -69,14 +74,94 @@ public final class Main {
             case "trace" -> machine(rest, true);
             case "mem" -> memory(rest);
             case "compile" -> compile(rest);
-            case "link", "layout", "syscall-trace" ->
-                stub(cmd);
+            case "link" -> link(rest);
+            case "layout", "syscall-trace" -> stub(cmd);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
                 printUsage(System.err);
                 yield 2;
             }
         };
+    }
+
+    private static int link(String[] args) {
+        if (args.length == 0) {
+            printLinkUsage();
+            return 64;
+        }
+        List<Path> inputs = new ArrayList<>();
+        Path output = Path.of("a.xex");
+        String entry = Xld.DEFAULT_ENTRY;
+        boolean verbose = false;
+        boolean outputSeen = false;
+        boolean entrySeen = false;
+        for (int index = 0; index < args.length; index++) {
+            switch (args[index]) {
+                case "-o" -> {
+                    if (outputSeen || index + 1 >= args.length) {
+                        printLinkUsage();
+                        return 64;
+                    }
+                    output = Path.of(args[++index]);
+                    outputSeen = true;
+                }
+                case "--entry" -> {
+                    if (entrySeen || index + 1 >= args.length) {
+                        printLinkUsage();
+                        return 64;
+                    }
+                    entry = args[++index];
+                    entrySeen = true;
+                }
+                case "-v", "--verbose" -> verbose = true;
+                default -> {
+                    if (args[index].startsWith("-")) {
+                        System.err.println("xlang: unknown link option '" + args[index] + "'");
+                        printLinkUsage();
+                        return 64;
+                    }
+                    inputs.add(Path.of(args[index]));
+                }
+            }
+        }
+        if (inputs.isEmpty()) {
+            printLinkUsage();
+            return 64;
+        }
+
+        List<XObject> objects = new ArrayList<>();
+        for (Path input : inputs) {
+            try {
+                objects.add(XObjectIO.read(input));
+            } catch (IOException exception) {
+                System.err.println("xlang: cannot read object '" + input + "': " + exception.getMessage());
+                return 66;
+            }
+        }
+        final Xld.LinkResult result;
+        try {
+            result = Xld.link(objects, entry, verbose);
+        } catch (LinkException exception) {
+            System.err.println("xlang: link failed: " + exception.getMessage());
+            return 1;
+        }
+        result.trace().forEach(System.out::println);
+        try {
+            XExecutableIO.write(output, result.executable());
+        } catch (IOException exception) {
+            System.err.println("xlang: cannot write '" + output + "': " + exception.getMessage());
+            return 73;
+        }
+        var executable = result.executable();
+        System.out.println("wrote " + output + " (entry=0x"
+            + String.format("%08x", executable.entryPoint()) + ", text=" + executable.text().length
+            + ", data=" + executable.data().length + ", symbols=" + executable.symbols().size() + ")");
+        return 0;
+    }
+
+    private static void printLinkUsage() {
+        System.err.println("Usage: xlang link <files.xo...> [-o <output.xex>]"
+            + " [--entry <symbol>] [-v|--verbose]");
     }
 
     private static int compile(String[] args) {
@@ -204,7 +289,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P6. "
+            "xlang " + cmd + ": not implemented yet in P7. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -237,7 +322,7 @@ public final class Main {
             "  check <file>          Run lexer, parser, and P2 type checker",
             "  ir <file>             Lower checked source to P3 three-address XIR",
             "  compile <file> [-o x] Compile source to a relocatable .xo object",
-            "  link <files>          [P7] Link .xo objects into a .xex executable",
+            "  link <files.xo...>    Link objects into an XE01 .xex executable",
             "  run <hex-program>     Run hand-assembled bytes on the P4 XMachine",
             "  trace <hex-program>   Same as run, but log every instruction",
             "  mem show              Show the P5 process page table",

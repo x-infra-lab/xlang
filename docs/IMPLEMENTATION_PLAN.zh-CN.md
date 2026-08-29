@@ -90,6 +90,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
   模式下逐字节打印重定位过程。
 - CLI：`xlang link` 变为真实实现。
 
+**已完成。**
+
 ## P8 — xrt
 
 - 用 xlang 写的迷你 libc：`start`、`write`、`exit`、`malloc`、`free`、

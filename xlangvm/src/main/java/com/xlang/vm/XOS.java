@@ -18,7 +18,6 @@ public final class XOS {
     private final PageTable pageTable;
     private final ByteArrayOutputStream output = new ByteArrayOutputStream();
     private int programEnd;
-    private int programMappedEnd;
     private int currentBreak = HEAP_BASE;
     private int nextMmap = MMAP_BASE;
 
@@ -30,19 +29,47 @@ public final class XOS {
     public void boot(byte[] program) {
         if (program.length == 0) throw new IllegalArgumentException("program is empty");
         if (program.length > HEAP_BASE) throw new IllegalArgumentException("program overlaps heap base");
+        resetProcess();
+        programEnd = program.length;
+        int mappedEnd = PageTable.alignUp(program.length);
+        pageTable.map(0, mappedEnd, EnumSet.of(Protection.READ, Protection.EXECUTE), "code");
+        mapStack();
+        writeKernel(0, program);
+    }
+
+    /** Boots a linked image with separately protected text and data segments. */
+    public void boot(byte[] text, int dataAddress, byte[] data) {
+        if (text.length == 0) throw new IllegalArgumentException("program text is empty");
+        if (dataAddress < text.length || dataAddress % PageTable.PAGE_SIZE != 0) {
+            throw new IllegalArgumentException("data address must be page aligned after text: " + dataAddress);
+        }
+        if ((long) dataAddress + data.length > HEAP_BASE) {
+            throw new IllegalArgumentException("program overlaps heap base");
+        }
+        resetProcess();
+        programEnd = data.length == 0 ? text.length : dataAddress + data.length;
+        pageTable.map(0, PageTable.alignUp(text.length),
+            EnumSet.of(Protection.READ, Protection.EXECUTE), "text");
+        if (data.length > 0) {
+            pageTable.map(dataAddress, PageTable.alignUp(data.length),
+                EnumSet.of(Protection.READ, Protection.WRITE), "data");
+        }
+        mapStack();
+        writeKernel(0, text);
+        if (data.length > 0) writeKernel(dataAddress, data);
+    }
+
+    private void resetProcess() {
         java.util.Arrays.fill(physicalMemory, (byte) 0);
         pageTable.reset();
         output.reset();
-        programEnd = program.length;
-        programMappedEnd = PageTable.alignUp(program.length);
-        pageTable.map(0, programMappedEnd, EnumSet.of(Protection.READ, Protection.EXECUTE), "code");
-        pageTable.map(STACK_TOP - STACK_BYTES, STACK_BYTES,
-            EnumSet.of(Protection.READ, Protection.WRITE), "stack");
-        for (int index = 0; index < program.length; index++) {
-            physicalMemory[pageTable.translateKernel(index)] = program[index];
-        }
         currentBreak = HEAP_BASE;
         nextMmap = MMAP_BASE;
+    }
+
+    private void mapStack() {
+        pageTable.map(STACK_TOP - STACK_BYTES, STACK_BYTES,
+            EnumSet.of(Protection.READ, Protection.WRITE), "stack");
     }
 
     public PageTable pageTable() { return pageTable; }

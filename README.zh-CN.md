@@ -19,9 +19,9 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P6 -- xlangc 后端。** 已定型 XIR 现在会按照显式栈帧 ABI 降级为 XMachine
-指令。编译器输出确定性的 `.xo` 目标文件，其中包含 text/data 段、符号、字符串
-和供 P7 链接使用的重定位项。
+**P7 -- xld 链接器。** 多个 `.xo` 目标文件现在可以链接为确定性的 XE01
+`.xex` 可执行文件。xld 会合并 text/data、解析局部与全局符号、应用
+`ABS32`/`ABS64` 重定位，并可逐字节打印回填过程。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
 - [阶段 0 -- 骨架](docs/phases/phase-0.zh-CN.md)
@@ -31,6 +31,7 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 - [阶段 4 -- XMachine 与 XCPU](docs/phases/phase-4.zh-CN.md)
 - [阶段 5 -- XOS 虚拟内存](docs/phases/phase-5.zh-CN.md)
 - [阶段 6 -- 后端与 .xo 目标文件](docs/phases/phase-6.zh-CN.md)
+- [阶段 7 -- 链接器与 .xex 可执行文件](docs/phases/phase-7.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
@@ -73,6 +74,7 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 ./gradlew :xlang-cli:run --args="mem show"
 ./gradlew :xlang-cli:run --args="mem map 512 rw"
 ./gradlew :xlang-cli:run --args="compile examples/hello.xl -o /tmp/hello.xo"
+./gradlew :xlang-cli:run --args="link /tmp/hello.xo -o /tmp/hello.xex --verbose"
 ```
 
 构建使用 Gradle 的 Java 21 toolchain；如果本地找不到 JDK 21，Gradle 会自动下载。

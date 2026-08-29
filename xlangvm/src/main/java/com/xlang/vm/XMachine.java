@@ -30,6 +30,17 @@ public final class XMachine {
         if (program.length == 0) throw new IllegalArgumentException("program is empty");
         os.boot(program);
         programEnd = program.length;
+        resetCpu();
+    }
+
+    /** Loads a linked image, preserving separate text and data protections. */
+    public void load(byte[] text, int dataAddress, byte[] data) {
+        os.boot(text, dataAddress, data);
+        programEnd = text.length;
+        resetCpu();
+    }
+
+    private void resetCpu() {
         cpu = new XCpu();
         cpu.register(XCpu.STACK_POINTER, XOS.STACK_TOP);
     }
