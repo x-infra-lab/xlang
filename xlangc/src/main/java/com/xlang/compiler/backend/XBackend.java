@@ -1,6 +1,7 @@
 package com.xlang.compiler.backend;
 
 import com.xlang.compiler.object.XObject;
+import com.xlang.compiler.sema.BuiltinFunctions;
 import com.xlang.compiler.sema.Type;
 import com.xlang.compiler.token.TokenType;
 import com.xlang.compiler.xir.Xir;
@@ -84,6 +85,7 @@ public final class XBackend {
             else { emitCmp(LEFT, RIGHT); emitBoolean(binary.operator()); }
             store(binary.result(), LEFT, slots);
         } else if (instruction instanceof Xir.Call call) {
+            if (compileIntrinsic(call, slots)) return;
             for (int index = call.arguments().size() - 1; index >= 0; index--) {
                 load(call.arguments().get(index), LEFT, slots); emitPush(LEFT);
             }
@@ -94,6 +96,35 @@ public final class XBackend {
             }
             if (call.result() != null) store(call.result(), RETURN, slots);
         }
+    }
+
+    private boolean compileIntrinsic(Xir.Call call, Map<Xir.Value, Integer> slots) {
+        if (!BuiltinFunctions.isIntrinsic(call.function())) return false;
+        switch (call.function()) {
+            case BuiltinFunctions.SYSCALL -> {
+                for (int index = 0; index < call.arguments().size(); index++) {
+                    load(call.arguments().get(index), index, slots);
+                }
+                emitOpcode(Opcode.SYSCALL);
+                if (call.result() != null) store(call.result(), RETURN, slots);
+            }
+            case BuiltinFunctions.ADDRESS -> {
+                load(call.arguments().get(0), LEFT, slots);
+                store(call.result(), LEFT, slots);
+            }
+            case BuiltinFunctions.LOAD64 -> {
+                load(call.arguments().get(0), ADDRESS, slots);
+                emitMemory(Opcode.LOAD64, LEFT, ADDRESS);
+                store(call.result(), LEFT, slots);
+            }
+            case BuiltinFunctions.STORE64 -> {
+                load(call.arguments().get(1), LEFT, slots);
+                load(call.arguments().get(0), ADDRESS, slots);
+                emitMemory(Opcode.STORE64, LEFT, ADDRESS);
+            }
+            default -> throw new IllegalStateException("unknown intrinsic " + call.function());
+        }
+        return true;
     }
 
     private void compileTerminator(Xir.Function function, Xir.Terminator terminator,

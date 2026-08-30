@@ -21,9 +21,9 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P7 -- xld linker.** Multiple `.xo` objects now link into deterministic XE01
-`.xex` executables. xld merges text/data, resolves local and global symbols,
-applies `ABS32`/`ABS64` relocations, and can print every patched byte.
+**P8 -- xrt mini libc.** The bundled runtime is written in xlang and provides
+`start`, `write`, `exit`, `malloc`, `free`, and a small `printf`. Executables
+can be linked with `--runtime` and inspected through a real syscall trace.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
@@ -34,6 +34,7 @@ applies `ABS32`/`ABS64` relocations, and can print every patched byte.
 - [Phase 5 -- XOS virtual memory](docs/phases/phase-5.md)
 - [Phase 6 -- Backend and .xo objects](docs/phases/phase-6.md)
 - [Phase 7 -- Linker and .xex executables](docs/phases/phase-7.md)
+- [Phase 8 -- xrt mini libc and syscall tracing](docs/phases/phase-8.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -77,6 +78,9 @@ applies `ABS32`/`ABS64` relocations, and can print every patched byte.
 ./gradlew :xlang-cli:run --args="mem map 512 rw"
 ./gradlew :xlang-cli:run --args="compile examples/hello.xl -o /tmp/hello.xo"
 ./gradlew :xlang-cli:run --args="link /tmp/hello.xo -o /tmp/hello.xex --verbose"
+./gradlew :xlang-cli:run --args="compile examples/runtime-demo.xl -o /tmp/runtime-demo.xo"
+./gradlew :xlang-cli:run --args="link /tmp/runtime-demo.xo --runtime -o /tmp/runtime-demo.xex"
+./gradlew :xlang-cli:run --args="syscall-trace /tmp/runtime-demo.xex"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

@@ -11,15 +11,20 @@ public final class XOS {
     public static final int HEAP_BASE = 0x0001_0000;
     public static final int MMAP_BASE = 0x0004_0000;
     public static final int STACK_TOP = 0x0010_0000;
-    public static final int STACK_BYTES = PageTable.PAGE_SIZE * 4;
+    public static final int STACK_BYTES = PageTable.PAGE_SIZE * 8;
     public static final long SYS_WRITE = 1;
+    public static final long SYS_EXIT = 2;
+    public static final long SYS_BRK = 3;
 
     private final byte[] physicalMemory;
     private final PageTable pageTable;
     private final ByteArrayOutputStream output = new ByteArrayOutputStream();
+    private final List<SyscallEvent> syscallEvents = new ArrayList<>();
     private int programEnd;
     private int currentBreak = HEAP_BASE;
     private int nextMmap = MMAP_BASE;
+    private boolean exited;
+    private long exitCode;
 
     public XOS(byte[] physicalMemory) {
         this.physicalMemory = physicalMemory;
@@ -63,6 +68,9 @@ public final class XOS {
         java.util.Arrays.fill(physicalMemory, (byte) 0);
         pageTable.reset();
         output.reset();
+        syscallEvents.clear();
+        exited = false;
+        exitCode = 0;
         currentBreak = HEAP_BASE;
         nextMmap = MMAP_BASE;
     }
@@ -150,17 +158,43 @@ public final class XOS {
     }
 
     public long syscall(long number, long fd, long buffer, long length, int instructionAddress) {
-        if (number != SYS_WRITE) throw new MachineFault(instructionAddress, "unknown syscall " + number);
-        if (fd != 1 && fd != 2) throw new MachineFault(instructionAddress, "write only supports fd 1 or 2, got " + fd);
-        if (length < 0 || length > Integer.MAX_VALUE) throw new MachineFault(instructionAddress, "invalid write length " + length);
-        int address = checkedVirtualAddress(buffer, instructionAddress);
-        byte[] bytes = readBytes(address, (int) length, instructionAddress);
-        output.writeBytes(bytes);
-        return bytes.length;
+        if (number == SYS_WRITE) {
+            if (fd != 1 && fd != 2) throw new MachineFault(instructionAddress, "write only supports fd 1 or 2, got " + fd);
+            if (length < 0 || length > Integer.MAX_VALUE) throw new MachineFault(instructionAddress, "invalid write length " + length);
+            int address = checkedVirtualAddress(buffer, instructionAddress);
+            byte[] bytes = readBytes(address, (int) length, instructionAddress);
+            output.writeBytes(bytes);
+            long result = bytes.length;
+            syscallEvents.add(new SyscallEvent(number, "write", List.of(fd, buffer, length), result,
+                escape(bytes)));
+            return result;
+        }
+        if (number == SYS_EXIT) {
+            exited = true;
+            exitCode = fd;
+            syscallEvents.add(new SyscallEvent(number, "exit", List.of(fd), 0, ""));
+            return 0;
+        }
+        if (number == SYS_BRK) {
+            long result = -1;
+            if (fd >= Integer.MIN_VALUE && fd <= Integer.MAX_VALUE) {
+                try {
+                    result = brk((int) fd);
+                } catch (IllegalArgumentException | IllegalStateException ignored) {
+                    // A kernel-style failure is observable as -1 rather than a host exception.
+                }
+            }
+            syscallEvents.add(new SyscallEvent(number, "brk", List.of(fd), result, ""));
+            return result;
+        }
+        throw new MachineFault(instructionAddress, "unknown syscall " + number);
     }
 
     public byte[] outputBytes() { return output.toByteArray(); }
     public String outputText() { return output.toString(StandardCharsets.UTF_8); }
+    public List<SyscallEvent> syscallEvents() { return List.copyOf(syscallEvents); }
+    public boolean exited() { return exited; }
+    public long exitCode() { return exitCode; }
 
     public List<MemoryRegion> regions() {
         List<MemoryRegion> regions = new ArrayList<>();
@@ -198,6 +232,41 @@ public final class XOS {
             throw new PageFault(instructionAddress, (int) address, Access.READ, "address is outside virtual space");
         }
         return (int) address;
+    }
+
+    private static String escape(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte value : bytes) {
+            int unsigned = value & 0xff;
+            switch (unsigned) {
+                case '\n' -> result.append("\\n");
+                case '\r' -> result.append("\\r");
+                case '\t' -> result.append("\\t");
+                case '\\' -> result.append("\\\\");
+                case '"' -> result.append("\\\"");
+                default -> {
+                    if (unsigned >= 0x20 && unsigned <= 0x7e) result.append((char) unsigned);
+                    else result.append(String.format("\\x%02x", unsigned));
+                }
+            }
+        }
+        return result.toString();
+    }
+
+    public record SyscallEvent(long number, String name, List<Long> arguments,
+                               long result, String detail) {
+        public SyscallEvent { arguments = List.copyOf(arguments); }
+
+        public String format() {
+            return switch (name) {
+                case "write" -> String.format("write(fd=%d, buffer=0x%08x, length=%d) = %d \"%s\"",
+                    arguments.get(0), arguments.get(1), arguments.get(2), result, detail);
+                case "exit" -> String.format("exit(status=%d) = %d", arguments.get(0), result);
+                case "brk" -> String.format("brk(address=0x%08x) = %s", arguments.get(0),
+                    result < 0 ? "-1" : String.format("0x%08x", result));
+                default -> name + arguments + " = " + result;
+            };
+        }
     }
 
     public record MemoryRegion(int start, int end, EnumSet<Protection> protections, String name,

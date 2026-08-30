@@ -1,0 +1,11 @@
+fn main() -> int {
+    printf("xrt says %d %%\n", 42);
+    let first = malloc(16);
+    free(first);
+    let reused = malloc(8);
+    if (first != reused) {
+        return 99;
+    }
+    free(reused);
+    return 7;
+}

@@ -45,7 +45,9 @@ public final class Parser {
         return new Ast.FnDecl(name.lexeme(), params, returnType, body, SourceSpan.merge(start.span(), body.span()));
     }
     private Ast.TypeRef type() {
-        if (match(TokenType.INT_TY, TokenType.BOOL_TY, TokenType.VOID_TY)) return new Ast.NamedType(previous().lexeme(), previous().span());
+        if (match(TokenType.INT_TY, TokenType.BOOL_TY, TokenType.VOID_TY, TokenType.STRING_TY)) {
+            return new Ast.NamedType(previous().lexeme(), previous().span());
+        }
         if (match(TokenType.STAR)) { Token start = previous(); Ast.TypeRef target = type(); return new Ast.PointerType(target, SourceSpan.merge(start.span(), target.span())); }
         if (match(TokenType.LBRACKET)) {
             Token start = previous(), length = consume(TokenType.INT_LIT, "expected array length");

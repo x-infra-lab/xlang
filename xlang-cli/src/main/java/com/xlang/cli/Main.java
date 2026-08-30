@@ -8,6 +8,7 @@ import com.xlang.compiler.object.XObjectIO;
 import com.xlang.linker.LinkException;
 import com.xlang.linker.XExecutableIO;
 import com.xlang.linker.Xld;
+import com.xlang.runtime.Xrt;
 import com.xlang.vm.HexProgram;
 import com.xlang.vm.MachineFault;
 import com.xlang.vm.XCpu;
@@ -32,7 +33,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P7";
+    public static final String VERSION = "0.1.0-P8";
 
     private Main() {}
 
@@ -62,8 +63,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P7 (xld linker + XE01 executables)");
-                System.out.println("Next milestone: P8 xrt mini libc + syscall tracing");
+                System.out.println("Current phase: P8 (xrt mini libc + syscall tracing)");
+                System.out.println("Next milestone: P9 aggregate types + layout visualizer");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -75,13 +76,45 @@ public final class Main {
             case "mem" -> memory(rest);
             case "compile" -> compile(rest);
             case "link" -> link(rest);
-            case "layout", "syscall-trace" -> stub(cmd);
+            case "syscall-trace" -> syscallTrace(rest);
+            case "layout" -> stub(cmd);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
                 printUsage(System.err);
                 yield 2;
             }
         };
+    }
+
+    private static int syscallTrace(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: xlang syscall-trace <file.xex>");
+            return 64;
+        }
+        final com.xlang.linker.XExecutable executable;
+        try {
+            executable = XExecutableIO.read(Path.of(args[0]));
+        } catch (IOException exception) {
+            System.err.println("xlang: cannot read executable '" + args[0] + "': " + exception.getMessage());
+            return 66;
+        }
+        XMachine machine = new XMachine();
+        try {
+            executable.loadInto(machine);
+            var result = machine.run();
+            machine.os().syscallEvents().forEach(event -> System.out.println(event.format()));
+            if (machine.os().exited()) {
+                System.out.println("process exited with status " + machine.os().exitCode()
+                    + " after " + result.cpu().steps() + " instructions");
+            } else {
+                System.out.println("process halted without exit syscall (r0=" + result.cpu().register(0)
+                    + ") after " + result.cpu().steps() + " instructions");
+            }
+            return 0;
+        } catch (IllegalArgumentException | MachineFault exception) {
+            System.err.println("xlang: execution failed: " + exception.getMessage());
+            return 65;
+        }
     }
 
     private static int link(String[] args) {
@@ -95,6 +128,7 @@ public final class Main {
         boolean verbose = false;
         boolean outputSeen = false;
         boolean entrySeen = false;
+        boolean runtime = false;
         for (int index = 0; index < args.length; index++) {
             switch (args[index]) {
                 case "-o" -> {
@@ -114,6 +148,7 @@ public final class Main {
                     entrySeen = true;
                 }
                 case "-v", "--verbose" -> verbose = true;
+                case "--runtime" -> runtime = true;
                 default -> {
                     if (args[index].startsWith("-")) {
                         System.err.println("xlang: unknown link option '" + args[index] + "'");
@@ -136,6 +171,15 @@ public final class Main {
             } catch (IOException exception) {
                 System.err.println("xlang: cannot read object '" + input + "': " + exception.getMessage());
                 return 66;
+            }
+        }
+        if (runtime) {
+            try {
+                objects.add(0, Xrt.object());
+                if (!entrySeen) entry = Xrt.ENTRY_SYMBOL;
+            } catch (IllegalStateException exception) {
+                System.err.println("xlang: cannot build bundled runtime: " + exception.getMessage());
+                return 70;
             }
         }
         final Xld.LinkResult result;
@@ -161,7 +205,7 @@ public final class Main {
 
     private static void printLinkUsage() {
         System.err.println("Usage: xlang link <files.xo...> [-o <output.xex>]"
-            + " [--entry <symbol>] [-v|--verbose]");
+            + " [--entry <symbol>] [--runtime] [-v|--verbose]");
     }
 
     private static int compile(String[] args) {
@@ -289,7 +333,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P7. "
+            "xlang " + cmd + ": not implemented yet in P8. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -322,13 +366,13 @@ public final class Main {
             "  check <file>          Run lexer, parser, and P2 type checker",
             "  ir <file>             Lower checked source to P3 three-address XIR",
             "  compile <file> [-o x] Compile source to a relocatable .xo object",
-            "  link <files.xo...>    Link objects into an XE01 .xex executable",
+            "  link <files.xo...>    Link objects into an XE01 .xex [--runtime]",
             "  run <hex-program>     Run hand-assembled bytes on the P4 XMachine",
             "  trace <hex-program>   Same as run, but log every instruction",
             "  mem show              Show the P5 process page table",
             "  mem map <bytes> [rwx] Add and display an anonymous mapping",
             "  layout <type>         [P9] Print struct/union memory layout",
-            "  syscall-trace <file>  [P8] strace-style syscall log",
+            "  syscall-trace <xex>   Run an executable with a syscall log",
             "",
             "See docs/phases for what each phase actually delivers."
         );

@@ -288,6 +288,7 @@ public final class Lowerer {
             case "int" -> Type.INT;
             case "bool" -> Type.BOOL;
             case "void" -> Type.VOID;
+            case "string" -> Type.STRING;
             default -> throw new IllegalStateException("unsupported checked type " + named.name());
         };
     }

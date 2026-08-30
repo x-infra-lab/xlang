@@ -12,6 +12,7 @@ import java.util.Map;
 /** P2 lexical name resolution and type checking. */
 public final class TypeChecker {
     private final Ast.Program program;
+    private final boolean requireMain;
     private final SymbolTable globals = new SymbolTable();
     private final List<Diagnostic> diagnostics = new ArrayList<>();
     private final Map<Ast.Expr, Type> expressionTypes = new IdentityHashMap<>();
@@ -21,12 +22,18 @@ public final class TypeChecker {
     private int loopDepth;
 
     public TypeChecker(Ast.Program program) {
+        this(program, true);
+    }
+
+    public TypeChecker(Ast.Program program, boolean requireMain) {
         this.program = program;
+        this.requireMain = requireMain;
     }
 
     public TypeCheckResult check() {
         declareTopLevelSymbols();
-        checkMain();
+        installBuiltins();
+        if (requireMain) checkMain();
         for (Ast.Item item : program.items()) {
             if (item instanceof Ast.LetDecl declaration) checkGlobal(declaration);
         }
@@ -34,6 +41,31 @@ public final class TypeChecker {
             if (item instanceof Ast.FnDecl function) checkFunction(function);
         }
         return new TypeCheckResult(diagnostics, expressionTypes);
+    }
+
+    private void installBuiltins() {
+        SourceSpan builtinSpan = new SourceSpan(0, 0, 1, 1);
+        for (Map.Entry<String, BuiltinFunctions.Signature> entry
+                : BuiltinFunctions.intrinsics().entrySet()) {
+            Symbol existing = globals.lookupLocal(entry.getKey()).orElse(null);
+            if (existing != null) {
+                error(existing.span(), "compiler intrinsic '" + entry.getKey() + "' is reserved");
+                continue;
+            }
+            BuiltinFunctions.Signature signature = entry.getValue();
+            globals.define(new Symbol.Function(entry.getKey(), signature.parameters(),
+                signature.result(), builtinSpan));
+        }
+        for (Map.Entry<String, BuiltinFunctions.Signature> entry
+                : BuiltinFunctions.runtime().entrySet()) {
+            if (globals.lookupLocal(entry.getKey()).isPresent()) continue;
+            BuiltinFunctions.Signature signature = entry.getValue();
+            globals.define(new Symbol.Function(entry.getKey(), signature.parameters(),
+                signature.result(), builtinSpan));
+        }
+        if (!requireMain && globals.lookupLocal("main").isEmpty()) {
+            globals.define(new Symbol.Function("main", List.of(), Type.INT, builtinSpan));
+        }
     }
 
     private void declareTopLevelSymbols() {
@@ -296,6 +328,7 @@ public final class TypeChecker {
                 case "int" -> Type.INT;
                 case "bool" -> Type.BOOL;
                 case "void" -> Type.VOID;
+                case "string" -> Type.STRING;
                 default -> Type.ERROR;
             };
             if (type == Type.VOID && !allowVoid) error(reference.span(), "void is only valid as a function return type");

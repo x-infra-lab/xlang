@@ -40,12 +40,16 @@ public final class Xlangc {
     }
 
     public static CheckResult check(String source) {
+        return check(source, true);
+    }
+
+    private static CheckResult check(String source, boolean requireMain) {
         ParseResult parsed = parse(source);
         if (parsed.hasErrors()) {
             TypeCheckResult skipped = new TypeCheckResult(java.util.List.of(), new IdentityHashMap<>());
             return new CheckResult(parsed.program(), parsed.diagnostics(), skipped);
         }
-        TypeCheckResult checked = new TypeChecker(parsed.program()).check();
+        TypeCheckResult checked = new TypeChecker(parsed.program(), requireMain).check();
         return new CheckResult(parsed.program(), checked.diagnostics(), checked);
     }
 
@@ -56,7 +60,19 @@ public final class Xlangc {
     }
 
     public static CompileResult compile(String source) {
-        IrResult lowered = lower(source);
+        return compile(source, true);
+    }
+
+    /** Compiles a library that may reference the application's external main function. */
+    public static CompileResult compileLibrary(String source) {
+        return compile(source, false);
+    }
+
+    private static CompileResult compile(String source, boolean requireMain) {
+        CheckResult checked = check(source, requireMain);
+        if (checked.hasErrors()) return new CompileResult(null, checked.diagnostics());
+        IrResult lowered = new IrResult(new Lowerer(checked.program(), checked.typeCheck()).lower(),
+            java.util.List.of());
         if (lowered.hasErrors()) return new CompileResult(null, lowered.diagnostics());
         return new CompileResult(new XBackend().compile(lowered.module()), java.util.List.of());
     }

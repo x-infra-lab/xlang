@@ -104,6 +104,8 @@ operator precedence, and at least four error-recovery cases.
   `free`, `printf`.
 - CLI: `xlang syscall-trace` becomes real.
 
+**Done.**
+
 ## P9 — Aggregates and layout
 
 - Struct, union, pointer, array parsing/checking/lowering with an

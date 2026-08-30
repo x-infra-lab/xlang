@@ -18,7 +18,8 @@ public final class Lexer {
         Map.entry("continue", TokenType.CONTINUE), Map.entry("true", TokenType.TRUE),
         Map.entry("false", TokenType.FALSE), Map.entry("null", TokenType.NULL),
         Map.entry("int", TokenType.INT_TY), Map.entry("bool", TokenType.BOOL_TY),
-        Map.entry("void", TokenType.VOID_TY), Map.entry("struct", TokenType.STRUCT),
+        Map.entry("void", TokenType.VOID_TY), Map.entry("string", TokenType.STRING_TY),
+        Map.entry("struct", TokenType.STRUCT),
         Map.entry("sizeof", TokenType.SIZEOF), Map.entry("as", TokenType.AS));
 
     private final String source;

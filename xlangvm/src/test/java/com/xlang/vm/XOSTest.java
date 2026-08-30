@@ -61,10 +61,25 @@ class XOSTest {
         XMachine unknown = machine(new Assembler().movi(0, 99).syscall().halt().bytes());
         assertTrue(assertThrows(MachineFault.class, unknown::run).getMessage().contains("unknown syscall"));
 
-        XOS os = new XMachine(2048).os();
+        XOS os = new XMachine(4096).os();
         os.boot(new Assembler().halt().bytes());
         assertThrows(IllegalStateException.class,
-            () -> os.mmap(2048, EnumSet.of(Protection.READ), "too-large"));
+            () -> os.mmap(4096, EnumSet.of(Protection.READ), "too-large"));
+    }
+
+    @Test void brkAndExitSyscallsAreLoggedAndExitStopsTheCpu() {
+        byte[] program = new Assembler()
+            .movi(0, XOS.SYS_BRK).movi(1, XOS.HEAP_BASE + 64).syscall()
+            .movi(0, XOS.SYS_EXIT).movi(1, 7).syscall()
+            .movi(0, 99).halt().bytes();
+        XMachine machine = machine(program);
+        machine.run();
+        assertEquals(XOS.HEAP_BASE + 64, machine.os().currentBreak());
+        assertTrue(machine.os().exited());
+        assertEquals(7, machine.os().exitCode());
+        assertEquals(2, machine.os().syscallEvents().size());
+        assertTrue(machine.os().syscallEvents().get(0).format().contains("brk(address="));
+        assertEquals("exit(status=7) = 0", machine.os().syscallEvents().get(1).format());
     }
 
     private static XMachine machine(byte[] program) {

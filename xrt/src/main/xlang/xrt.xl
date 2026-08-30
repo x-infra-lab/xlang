@@ -1,0 +1,125 @@
+// xrt P8: a deliberately small libc written in xlang.
+// Raw machine access is restricted to the four __ compiler intrinsics.
+
+let heap_cursor: int = 0;
+let free_head: int = 0;
+
+fn write(fd: int, buffer: int, length: int) -> int {
+    return __syscall(1, fd, buffer, length);
+}
+
+fn exit(status: int) -> void {
+    __syscall(2, status, 0, 0);
+    return;
+}
+
+fn malloc(size: int) -> int {
+    if (size <= 0) {
+        return 0;
+    }
+    let aligned = (size + 7) / 8 * 8;
+    let previous = 0;
+    let current = free_head;
+    while (current != 0) {
+        let block_size = __load64(current);
+        let next_free = __load64(current + 8);
+        if (block_size >= aligned) {
+            if (previous == 0) {
+                free_head = next_free;
+            } else {
+                __store64(previous + 8, next_free);
+            }
+            return current + 16;
+        }
+        previous = current;
+        current = next_free;
+    }
+
+    if (heap_cursor == 0) {
+        heap_cursor = __syscall(3, 0, 0, 0);
+    }
+    let next_break = heap_cursor + 16 + aligned;
+    let new_break = __syscall(3, next_break, 0, 0);
+    if (new_break < 0) {
+        return 0;
+    }
+    let header = heap_cursor;
+    heap_cursor = next_break;
+    __store64(header, aligned);
+    __store64(header + 8, 0);
+    return header + 16;
+}
+
+fn free(pointer: int) -> void {
+    if (pointer <= 0) {
+        return;
+    }
+    let header = pointer - 16;
+    __store64(header + 8, free_head);
+    free_head = header;
+    return;
+}
+
+fn print_int(value: int) -> int {
+    let buffer = malloc(32);
+    if (buffer == 0) {
+        return -1;
+    }
+    let written = 0;
+    if (value < 0) {
+        written += write(1, __address("-"), 1);
+        value = -value;
+    }
+    if (value == 0) {
+        __store64(buffer, 48);
+        written += write(1, buffer, 1);
+        free(buffer);
+        return written;
+    }
+
+    let digits = 0;
+    while (value > 0) {
+        __store64(buffer + digits, 48 + value % 10);
+        digits += 1;
+        value /= 10;
+    }
+    while (digits > 0) {
+        digits -= 1;
+        written += write(1, buffer + digits, 1);
+    }
+    free(buffer);
+    return written;
+}
+
+// P8 printf intentionally supports one integer argument, %d, and %%.
+fn printf(format: string, value: int) -> int {
+    let address = __address(format);
+    let index = 0;
+    let written = 0;
+    while (__load64(address + index) % 256 != 0) {
+        let character = __load64(address + index) % 256;
+        if (character == 37) {
+            let next = __load64(address + index + 1) % 256;
+            if (next == 100) {
+                written += print_int(value);
+                index += 2;
+            } else if (next == 37) {
+                written += write(1, address + index, 1);
+                index += 2;
+            } else {
+                written += write(1, address + index, 1);
+                index += 1;
+            }
+        } else {
+            written += write(1, address + index, 1);
+            index += 1;
+        }
+    }
+    return written;
+}
+
+fn start() -> int {
+    let status = main();
+    exit(status);
+    return status;
+}

@@ -38,7 +38,7 @@ Reserved and cannot be used as identifiers:
 ```
 fn let return if else while for break continue
 true false null
-int bool void
+int bool void string
 struct sizeof as
 ```
 
@@ -94,7 +94,7 @@ ret_type       ::= '->' type
 
 let_decl       ::= 'let' IDENT (':' type)? '=' expr
 
-type           ::= 'int' | 'bool' | 'void'
+type           ::= 'int' | 'bool' | 'void' | 'string'
                  | '*' type                 // pointer, materialised in P9
                  | '[' INT_LIT ']' type     // fixed-size array, P9
 
@@ -136,6 +136,8 @@ statement after `else` without braces.
 - `int` is 64-bit signed. Overflow wraps. This is a xlang choice; C is
   more careful and P2 will document the exact semantics we adopt.
 - `bool` is `true` or `false`. Not an integer.
+- `string` is an immutable, null-terminated UTF-8 string value. P8 exposes it
+  as a parameter type for the xrt `printf` ABI.
 - `void` is only valid as a function return type.
 - Pointer and array types parse in P1 but are not semantically checked
   until P9.

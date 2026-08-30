@@ -34,7 +34,7 @@ ident_cont  ::= ident_start | '0'..'9'
 ```
 fn let return if else while for break continue
 true false null
-int bool void
+int bool void string
 struct sizeof as
 ```
 
@@ -89,7 +89,7 @@ ret_type       ::= '->' type
 
 let_decl       ::= 'let' IDENT (':' type)? '=' expr
 
-type           ::= 'int' | 'bool' | 'void'
+type           ::= 'int' | 'bool' | 'void' | 'string'
                  | '*' type                 // 指针，P9 落地
                  | '[' INT_LIT ']' type     // 定长数组，P9
 
@@ -129,6 +129,8 @@ primary        ::= INT_LIT | STRING_LIT | 'true' | 'false' | 'null'
 - `int` 为 64 位有符号整数，溢出取模。这是 xlang 的选择，C 语义更严格，
   P2 会明确我们采用的准确规则。
 - `bool` 只有 `true` / `false`，与整型不互转。
+- `string` 是不可变、以 null 结尾的 UTF-8 字符串值。P8 将它作为 xrt
+  `printf` ABI 的参数类型开放。
 - `void` 只能作为函数返回类型。
 - 指针与数组类型在 P1 只做语法识别，语义检查从 P9 起。
 

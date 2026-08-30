@@ -139,6 +139,7 @@ public final class XMachine {
             case SYSCALL -> {
                 long result = os.syscall(cpu.register(0), cpu.register(1), cpu.register(2), cpu.register(3), address);
                 cpu.register(0, result); cpu.flags(result); decoded = "syscall";
+                if (os.exited()) cpu.halt();
             }
         }
         cpu.incrementSteps();

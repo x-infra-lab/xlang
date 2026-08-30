@@ -98,6 +98,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
   `printf`。
 - CLI：`xlang syscall-trace` 变为真实实现。
 
+**已完成。**
+
 ## P9 — 聚合类型与布局
 
 - struct / union / 指针 / 数组的语法、类型检查、降级；提供显式的布局

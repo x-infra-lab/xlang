@@ -18,7 +18,7 @@ public enum TokenType {
 
     // keywords
     FN, LET, RETURN, IF, ELSE, WHILE, FOR, BREAK, CONTINUE,
-    INT_TY, BOOL_TY, VOID_TY,
+    INT_TY, BOOL_TY, VOID_TY, STRING_TY,
     STRUCT, SIZEOF, AS,
 
     // punctuation
@@ -40,7 +40,7 @@ public enum TokenType {
         return switch (this) {
             case FN, LET, RETURN, IF, ELSE, WHILE, FOR, BREAK, CONTINUE,
                  TRUE, FALSE, NULL,
-                 INT_TY, BOOL_TY, VOID_TY,
+                 INT_TY, BOOL_TY, VOID_TY, STRING_TY,
                  STRUCT, SIZEOF, AS -> true;
             default -> false;
         };
