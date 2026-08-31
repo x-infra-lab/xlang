@@ -27,8 +27,26 @@ public final class Parser {
 
     private Ast.Item item() {
         if (match(TokenType.FN)) return function(previous());
+        if (match(TokenType.STRUCT, TokenType.UNION)) return aggregate(previous());
         if (match(TokenType.LET)) { Ast.LetDecl d = letDecl(previous()); consume(TokenType.SEMICOLON, "expected ';' after declaration"); return d; }
-        throw error(peek(), "expected top-level 'fn' or 'let'");
+        throw error(peek(), "expected top-level 'fn', 'let', 'struct', or 'union'");
+    }
+    private Ast.AggregateDecl aggregate(Token start) {
+        Token name = consume(TokenType.IDENT, "expected aggregate type name");
+        consume(TokenType.LBRACE, "expected '{' after aggregate name");
+        List<Ast.FieldDecl> fields = new ArrayList<>();
+        while (!check(TokenType.RBRACE) && !check(TokenType.EOF)) {
+            Token field = consume(TokenType.IDENT, "expected field name");
+            consume(TokenType.COLON, "expected ':' after field name");
+            Ast.TypeRef type = type();
+            Token end = consume(TokenType.SEMICOLON, "expected ';' after field");
+            fields.add(new Ast.FieldDecl(field.lexeme(), type, SourceSpan.merge(field.span(), end.span())));
+        }
+        Token end = consume(TokenType.RBRACE, "expected '}' after aggregate declaration");
+        Ast.AggregateKind kind = start.type() == TokenType.STRUCT
+            ? Ast.AggregateKind.STRUCT : Ast.AggregateKind.UNION;
+        return new Ast.AggregateDecl(kind, name.lexeme(), fields,
+            SourceSpan.merge(start.span(), end.span()));
     }
     private Ast.FnDecl function(Token start) {
         Token name = consume(TokenType.IDENT, "expected function name");
@@ -45,7 +63,8 @@ public final class Parser {
         return new Ast.FnDecl(name.lexeme(), params, returnType, body, SourceSpan.merge(start.span(), body.span()));
     }
     private Ast.TypeRef type() {
-        if (match(TokenType.INT_TY, TokenType.BOOL_TY, TokenType.VOID_TY, TokenType.STRING_TY)) {
+        if (match(TokenType.INT_TY, TokenType.BOOL_TY, TokenType.VOID_TY,
+                  TokenType.STRING_TY, TokenType.IDENT)) {
             return new Ast.NamedType(previous().lexeme(), previous().span());
         }
         if (match(TokenType.STAR)) { Token start = previous(); Ast.TypeRef target = type(); return new Ast.PointerType(target, SourceSpan.merge(start.span(), target.span())); }
@@ -108,8 +127,22 @@ public final class Parser {
     private Ast.Expr equality() { return binary(this::relational, TokenType.EQ_EQ, TokenType.BANG_EQ); }
     private Ast.Expr relational() { return binary(this::additive, TokenType.LT, TokenType.LT_EQ, TokenType.GT, TokenType.GT_EQ); }
     private Ast.Expr additive() { return binary(this::multiplicative, TokenType.PLUS, TokenType.MINUS); }
-    private Ast.Expr multiplicative() { return binary(this::unary, TokenType.STAR, TokenType.SLASH, TokenType.PERCENT); }
+    private Ast.Expr multiplicative() { return binary(this::cast, TokenType.STAR, TokenType.SLASH, TokenType.PERCENT); }
+    private Ast.Expr cast() {
+        Ast.Expr expression = unary();
+        while (match(TokenType.AS)) {
+            Ast.TypeRef target = type();
+            expression = new Ast.CastExpr(expression, target,
+                SourceSpan.merge(expression.span(), target.span()));
+        }
+        return expression;
+    }
     private Ast.Expr unary() {
+        if (match(TokenType.SIZEOF)) {
+            Token start = previous(); consume(TokenType.LPAREN, "expected '(' after sizeof");
+            Ast.TypeRef measured = type(); Token end = consume(TokenType.RPAREN, "expected ')' after sizeof type");
+            return new Ast.SizeofExpr(measured, SourceSpan.merge(start.span(), end.span()));
+        }
         if (match(TokenType.MINUS, TokenType.BANG, TokenType.STAR, TokenType.AMP)) { Token op = previous(); Ast.Expr operand = unary(); return new Ast.UnaryExpr(op.type(), operand, SourceSpan.merge(op.span(), operand.span())); }
         return postfix();
     }
@@ -129,7 +162,28 @@ public final class Parser {
         if (match(TokenType.TRUE)) return new Ast.LiteralExpr(true, previous().span());
         if (match(TokenType.FALSE)) return new Ast.LiteralExpr(false, previous().span());
         if (match(TokenType.NULL)) return new Ast.LiteralExpr(null, previous().span());
-        if (match(TokenType.IDENT)) return new Ast.NameExpr(previous().lexeme(), previous().span());
+        if (match(TokenType.IDENT)) {
+            Token name = previous();
+            if (!match(TokenType.LBRACE)) return new Ast.NameExpr(name.lexeme(), name.span());
+            List<Ast.FieldInit> fields = new ArrayList<>();
+            if (!check(TokenType.RBRACE)) do {
+                Token field = consume(TokenType.IDENT, "expected aggregate field name");
+                consume(TokenType.COLON, "expected ':' after aggregate field name");
+                Ast.Expr value = expression();
+                fields.add(new Ast.FieldInit(field.lexeme(), value,
+                    SourceSpan.merge(field.span(), value.span())));
+            } while (match(TokenType.COMMA) && !check(TokenType.RBRACE));
+            Token end = consume(TokenType.RBRACE, "expected '}' after aggregate literal");
+            return new Ast.AggregateLiteralExpr(name.lexeme(), fields,
+                SourceSpan.merge(name.span(), end.span()));
+        }
+        if (match(TokenType.LBRACKET)) {
+            Token start = previous(); List<Ast.Expr> elements = new ArrayList<>();
+            if (!check(TokenType.RBRACKET)) do { elements.add(expression()); }
+                while (match(TokenType.COMMA) && !check(TokenType.RBRACKET));
+            Token end = consume(TokenType.RBRACKET, "expected ']' after array literal");
+            return new Ast.ArrayLiteralExpr(elements, SourceSpan.merge(start.span(), end.span()));
+        }
         if (match(TokenType.LPAREN)) { Token start = previous(); Ast.Expr inner = expression(); Token end = consume(TokenType.RPAREN, "expected ')' after expression"); return new Ast.GroupExpr(inner, SourceSpan.merge(start.span(), end.span())); }
         throw error(peek(), "expected expression");
     }
@@ -138,7 +192,8 @@ public final class Parser {
     }
     private void synchronize(boolean topLevel) {
         while (!check(TokenType.EOF)) {
-            if (topLevel && (check(TokenType.FN) || check(TokenType.LET))) return;
+            if (topLevel && (check(TokenType.FN) || check(TokenType.LET)
+                    || check(TokenType.STRUCT) || check(TokenType.UNION))) return;
             if (!topLevel && (check(TokenType.LET) || check(TokenType.RETURN) || check(TokenType.IF) || check(TokenType.WHILE) || check(TokenType.BREAK) || check(TokenType.CONTINUE) || check(TokenType.RBRACE))) return;
             advance();
             if (previous().type() == TokenType.SEMICOLON) return;

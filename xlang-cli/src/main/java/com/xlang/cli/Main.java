@@ -33,7 +33,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P8";
+    public static final String VERSION = "0.1.0-P9";
 
     private Main() {}
 
@@ -63,8 +63,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P8 (xrt mini libc + syscall tracing)");
-                System.out.println("Next milestone: P9 aggregate types + layout visualizer");
+                System.out.println("Current phase: P9 (aggregate types + layout visualizer)");
+                System.out.println("Next milestone: P10 end-to-end toolchain demo");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -77,7 +77,7 @@ public final class Main {
             case "compile" -> compile(rest);
             case "link" -> link(rest);
             case "syscall-trace" -> syscallTrace(rest);
-            case "layout" -> stub(cmd);
+            case "layout" -> layout(rest);
             default -> {
                 System.err.println("xlang: unknown command '" + cmd + "'");
                 printUsage(System.err);
@@ -115,6 +115,18 @@ public final class Main {
             System.err.println("xlang: execution failed: " + exception.getMessage());
             return 65;
         }
+    }
+
+    private static int layout(String[] args) {
+        if (args.length != 1) {
+            System.err.println("Usage: xlang layout <type>");
+            return 64;
+        }
+        var result = Xlangc.layout(args[0]);
+        result.diagnostics().forEach(diagnostic -> System.err.println(diagnostic.format("<type>")));
+        if (result.hasErrors()) return 1;
+        System.out.print(result.description());
+        return 0;
     }
 
     private static int link(String[] args) {
@@ -333,7 +345,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P8. "
+            "xlang " + cmd + ": not implemented yet in P9. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -371,7 +383,7 @@ public final class Main {
             "  trace <hex-program>   Same as run, but log every instruction",
             "  mem show              Show the P5 process page table",
             "  mem map <bytes> [rwx] Add and display an anonymous mapping",
-            "  layout <type>         [P9] Print struct/union memory layout",
+            "  layout <type>         Print size, alignment, fields, and padding",
             "  syscall-trace <xex>   Run an executable with a syscall log",
             "",
             "See docs/phases for what each phase actually delivers."

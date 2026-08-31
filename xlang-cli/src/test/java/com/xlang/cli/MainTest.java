@@ -41,10 +41,10 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP8() {
+    void phaseCommandReportsP9() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P8"));
+        assertTrue(cap.stdout.contains("P9"));
     }
 
     @Test
@@ -210,11 +210,15 @@ class MainTest {
     }
 
     @Test
-    void stubbedCommandsFailLoudlyButPointAtAPhase() {
-        Capture cap = Capture.run(() -> Main.run(new String[] {"layout", "Thing"}));
-        assertNotEquals(0, cap.exit);
-        assertTrue(cap.stderr.contains("P9"),
-            "stub should announce it is planned for P9, was: " + cap.stderr);
+    void layoutPrintsAggregateOffsetsAndPadding() {
+        Capture cap = Capture.run(() -> Main.run(new String[] {
+            "layout", "struct Thing { flag: bool; value: int; tail: [2]bool; }"
+        }));
+        assertEquals(0, cap.exit, cap.stderr);
+        assertTrue(cap.stdout.contains("struct Thing: size=24, align=8"));
+        assertTrue(cap.stdout.contains("flag"));
+        assertTrue(cap.stdout.contains("value"));
+        assertTrue(cap.stdout.contains("padding"));
     }
 
     /** Tiny stdout/stderr capture helper so tests don't leak println noise. */

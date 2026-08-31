@@ -112,6 +112,8 @@ operator precedence, and at least four error-recovery cases.
   explicit layout algorithm you can print.
 - CLI: `xlang layout <type>` becomes real.
 
+**Complete.**
+
 ## P10 — Capstone demo
 
 - One xlang program that exercises P1–P9 end to end and produces

@@ -21,11 +21,13 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P8 -- xrt mini libc.** The bundled runtime is written in xlang and provides
-`start`, `write`, `exit`, `malloc`, `free`, and a small `printf`. Executables
-can be linked with `--runtime` and inspected through a real syscall trace.
+**P9 -- aggregate types and memory layout.** The language now supports structs,
+unions, fixed arrays, checked pointers, `sizeof`, and explicit casts. Member and
+index operations lower to address arithmetic plus loads/stores, while `layout`
+prints offsets, alignment, and padding.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
+- [P9 aggregate specification addendum](docs/spec/xlang-spec-v0.2.md)
 - [Phase 0 -- Scaffold](docs/phases/phase-0.md)
 - [Phase 1 -- Lexer and parser](docs/phases/phase-1.md)
 - [Phase 2 -- Types and lexical scopes](docs/phases/phase-2.md)
@@ -35,16 +37,17 @@ can be linked with `--runtime` and inspected through a real syscall trace.
 - [Phase 6 -- Backend and .xo objects](docs/phases/phase-6.md)
 - [Phase 7 -- Linker and .xex executables](docs/phases/phase-7.md)
 - [Phase 8 -- xrt mini libc and syscall tracing](docs/phases/phase-8.md)
+- [Phase 9 -- aggregate types and layout visualization](docs/phases/phase-9.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
 
 | Module      | Role                                                          | Lands in |
 |-------------|---------------------------------------------------------------|----------|
-| `xlangc`    | Compiler: lexer, parser, sema, XIR, backend                   | P1--P6   |
-| `xlangvm`   | Virtual machine: XCPU, XMachine, XOS (page tables, syscalls)  | P4--P5   |
+| `xlangc`    | Compiler: lexer, parser, sema, layout, XIR, backend           | P1--P9   |
+| `xlangvm`   | Virtual machine: XCPU, XMachine, XOS (page tables, syscalls)  | P4--P5, P9 |
 | `xld`       | Linker: object merging, symbol resolution, relocations        | P7       |
-| `xrt`       | Mini libc written in xlang: start, write, malloc, printf      | P8       |
+| `xrt`       | Mini libc written in xlang: start, write, malloc, printf      | P8--P9   |
 | `xlang-cli` | Single `xlang` command that dispatches to everything above    | P0+      |
 
 ## Phase roadmap

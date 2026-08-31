@@ -4,8 +4,8 @@
 let heap_cursor: int = 0;
 let free_head: int = 0;
 
-fn write(fd: int, buffer: int, length: int) -> int {
-    return __syscall(1, fd, buffer, length);
+fn write(fd: int, buffer: *void, length: int) -> int {
+    return __syscall(1, fd, buffer as int, length);
 }
 
 fn exit(status: int) -> void {
@@ -13,23 +13,23 @@ fn exit(status: int) -> void {
     return;
 }
 
-fn malloc(size: int) -> int {
+fn malloc(size: int) -> *void {
     if (size <= 0) {
-        return 0;
+        return null;
     }
     let aligned = (size + 7) / 8 * 8;
     let previous = 0;
     let current = free_head;
     while (current != 0) {
-        let block_size = __load64(current);
-        let next_free = __load64(current + 8);
+        let block_size = __load64(current as *void);
+        let next_free = __load64((current + 8) as *void);
         if (block_size >= aligned) {
             if (previous == 0) {
                 free_head = next_free;
             } else {
-                __store64(previous + 8, next_free);
+                __store64((previous + 8) as *void, next_free);
             }
-            return current + 16;
+            return (current + 16) as *void;
         }
         previous = current;
         current = next_free;
@@ -41,28 +41,28 @@ fn malloc(size: int) -> int {
     let next_break = heap_cursor + 16 + aligned;
     let new_break = __syscall(3, next_break, 0, 0);
     if (new_break < 0) {
-        return 0;
+        return null;
     }
     let header = heap_cursor;
     heap_cursor = next_break;
-    __store64(header, aligned);
-    __store64(header + 8, 0);
-    return header + 16;
+    __store64(header as *void, aligned);
+    __store64((header + 8) as *void, 0);
+    return (header + 16) as *void;
 }
 
-fn free(pointer: int) -> void {
-    if (pointer <= 0) {
+fn free(pointer: *void) -> void {
+    if (pointer == null) {
         return;
     }
-    let header = pointer - 16;
-    __store64(header + 8, free_head);
+    let header = pointer as int - 16;
+    __store64((header + 8) as *void, free_head);
     free_head = header;
     return;
 }
 
 fn print_int(value: int) -> int {
     let buffer = malloc(32);
-    if (buffer == 0) {
+    if (buffer == null) {
         return -1;
     }
     let written = 0;

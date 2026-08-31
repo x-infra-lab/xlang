@@ -36,6 +36,23 @@ class XldTest {
     }
 
     @Test
+    void startupInitializesAndReadsGlobalAggregates() throws Exception {
+        var compiled = Xlangc.compile("""
+            struct Pair { ready: bool; value: int; }
+            let pair = Pair { ready: true, value: 42 };
+            fn main() -> int {
+                if (pair.ready) { return pair.value; }
+                return 0;
+            }
+            """);
+        XExecutable executable = Xld.link(List.of(compiled.object())).executable();
+        XMachine machine = new XMachine();
+        executable.loadInto(machine);
+        machine.run();
+        assertEquals(42, machine.cpu().register(0));
+    }
+
+    @Test
     void resolvesGlobalCallsAcrossObjectsAndRunsStartup() throws Exception {
         byte[] mainText = new Assembler().opcode(Opcode.CALL).i32(0).ret().bytes();
         XObject main = object(mainText, new byte[] {1},

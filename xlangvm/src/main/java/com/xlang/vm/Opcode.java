@@ -11,6 +11,7 @@ public enum Opcode {
     DIV(0x23, 4, "div"), MOD(0x24, 4, "mod"), CMP(0x30, 3, "cmp"),
     JMP(0x31, 5, "jmp"), JZ(0x32, 5, "jz"), JNZ(0x33, 5, "jnz"),
     JN(0x34, 5, "jn"), LOAD64(0x40, 3, "load64"), STORE64(0x41, 3, "store64"),
+    LOAD8(0x42, 3, "load8"), STORE8(0x43, 3, "store8"),
     PUSH(0x50, 2, "push"), POP(0x51, 2, "pop"),
     CALL(0x60, 5, "call"), RET(0x61, 1, "ret"),
     SYSCALL(0x70, 1, "syscall");

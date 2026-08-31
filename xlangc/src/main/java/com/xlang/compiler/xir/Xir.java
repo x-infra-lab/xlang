@@ -26,7 +26,8 @@ public final class Xir {
     /** Named virtual value. Globals start with @; locals and temporaries with %. */
     public record Value(String name, Type type) {}
 
-    public sealed interface Instruction permits Const, Copy, Unary, Binary, Call {}
+    public sealed interface Instruction permits Const, Copy, Unary, Binary, Call, Allocate,
+        GlobalAddress, AddressOf, PointerOffset, Load, Store, MemCopy {}
     public record Const(Value result, Object value) implements Instruction {}
     public record Copy(Value target, Value source) implements Instruction {}
     public record Unary(Value result, TokenType operator, Value operand) implements Instruction {}
@@ -34,6 +35,13 @@ public final class Xir {
     public record Call(Value result, String function, List<Value> arguments) implements Instruction {
         public Call { arguments = List.copyOf(arguments); }
     }
+    public record Allocate(Value result, Type allocatedType) implements Instruction {}
+    public record GlobalAddress(Value result, String symbol) implements Instruction {}
+    public record AddressOf(Value result, Value target) implements Instruction {}
+    public record PointerOffset(Value result, Value base, Value byteOffset) implements Instruction {}
+    public record Load(Value result, Value address) implements Instruction {}
+    public record Store(Value address, Value source) implements Instruction {}
+    public record MemCopy(Value targetAddress, Value sourceAddress, long size) implements Instruction {}
 
     public sealed interface Terminator permits Jump, Branch, Return, Unreachable {}
     public record Jump(String target) implements Terminator {}

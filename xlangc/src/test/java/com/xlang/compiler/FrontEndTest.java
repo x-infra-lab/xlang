@@ -71,6 +71,27 @@ class FrontEndTest {
         assertFalse(r.hasErrors(), r.diagnostics().toString());
     }
 
+    @Test void parsesP9AggregatesLiteralsSizeofAndCasts() {
+        String source = """
+            struct Pair { flag: bool; value: int; }
+            union Bits { integer: int; truth: bool; }
+            fn main() -> int {
+              let pair = Pair { flag: true, value: 42 };
+              let values: [3]int = [1, 2, 3];
+              let pointer: *int = &pair.value;
+              return *pointer + values[0] + sizeof(Bits) as int;
+            }
+            """;
+        var result = Xlangc.parse(source);
+        assertFalse(result.hasErrors(), result.diagnostics().toString());
+        String printed = AstPrinter.print(result.program());
+        assertTrue(printed.contains("STRUCT Pair"));
+        assertTrue(printed.contains("UNION Bits"));
+        assertTrue(printed.contains("AggregateLiteral Pair"));
+        assertTrue(printed.contains("ArrayLiteral"));
+        assertTrue(printed.contains("Sizeof"));
+    }
+
     @Test void recoversAndReportsAtLeastFourErrors() {
         String source = """
             fn broken(a int) { let = ; return ; }

@@ -5,9 +5,8 @@ package com.xlang.compiler.token;
  *
  * <p>Keywords are separate types (not one generic {@code KEYWORD}) so the
  * parser can pattern-match on {@code FN}, {@code LET}, etc. directly.
- * The spec-reserved-but-P1-unused keywords ({@code STRUCT}, {@code SIZEOF},
- * {@code AS}) still get their own tokens so that later phases don't have
- * to touch the lexer.
+ * Aggregate and layout keywords remain distinct so the recursive-descent
+ * parser can recognize P9 declarations and expressions directly.
  */
 public enum TokenType {
     // literals
@@ -19,7 +18,7 @@ public enum TokenType {
     // keywords
     FN, LET, RETURN, IF, ELSE, WHILE, FOR, BREAK, CONTINUE,
     INT_TY, BOOL_TY, VOID_TY, STRING_TY,
-    STRUCT, SIZEOF, AS,
+    STRUCT, UNION, SIZEOF, AS,
 
     // punctuation
     LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET,
@@ -41,7 +40,7 @@ public enum TokenType {
             case FN, LET, RETURN, IF, ELSE, WHILE, FOR, BREAK, CONTINUE,
                  TRUE, FALSE, NULL,
                  INT_TY, BOOL_TY, VOID_TY, STRING_TY,
-                 STRUCT, SIZEOF, AS -> true;
+                 STRUCT, UNION, SIZEOF, AS -> true;
             default -> false;
         };
     }

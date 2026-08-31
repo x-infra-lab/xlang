@@ -150,6 +150,11 @@ public final class XOS {
         }
     }
 
+    public void writeByte(int virtualAddress, long value, int instructionAddress) {
+        int physical = translate(virtualAddress, Access.WRITE, instructionAddress);
+        physicalMemory[physical] = (byte) value;
+    }
+
     /** Kernel-only helper for fixtures/loaders; bypasses user protection, not mapping. */
     public void writeKernel(int virtualAddress, byte[] bytes) {
         for (int offset = 0; offset < bytes.length; offset++) {

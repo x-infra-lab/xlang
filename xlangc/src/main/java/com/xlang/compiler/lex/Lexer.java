@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** A hand-written, single-pass lexer for xlang v0.1. */
+/** A hand-written, single-pass lexer for xlang. */
 public final class Lexer {
     private static final Map<String, TokenType> KEYWORDS = Map.ofEntries(
         Map.entry("fn", TokenType.FN), Map.entry("let", TokenType.LET),
@@ -19,7 +19,7 @@ public final class Lexer {
         Map.entry("false", TokenType.FALSE), Map.entry("null", TokenType.NULL),
         Map.entry("int", TokenType.INT_TY), Map.entry("bool", TokenType.BOOL_TY),
         Map.entry("void", TokenType.VOID_TY), Map.entry("string", TokenType.STRING_TY),
-        Map.entry("struct", TokenType.STRUCT),
+        Map.entry("struct", TokenType.STRUCT), Map.entry("union", TokenType.UNION),
         Map.entry("sizeof", TokenType.SIZEOF), Map.entry("as", TokenType.AS));
 
     private final String source;

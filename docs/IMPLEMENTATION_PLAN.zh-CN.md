@@ -106,6 +106,8 @@ happy path、转义序列、运算符优先级，以及至少四个错误恢复�
   算法，可打印。
 - CLI：`xlang layout <type>` 变为真实实现。
 
+**已完成。**
+
 ## P10 — 综合 demo
 
 - 一段 xlang 程序，端到端把 P1–P9 串起来，通过 xrt 的 syscall 产生

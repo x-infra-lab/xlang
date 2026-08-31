@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.xlang.compiler.ast.Ast;
 import com.xlang.compiler.sema.Type;
+import com.xlang.compiler.sema.LayoutEngine;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -79,10 +80,49 @@ class TypeCheckerTest {
         assertEquals(2, breakOutside.diagnostics().stream().filter(d -> d.message().contains("only valid inside a loop")).count());
     }
 
-    @Test void reportsP9FeaturesWithoutCascadingTypeNoise() {
-        var result = Xlangc.check("fn main() -> int { let p: *int = null; return 0; }");
-        assertMessage(result.diagnostics(), "pointer and array types are implemented in P9");
-        assertMessage(result.diagnostics(), "null requires pointer types, which are implemented in P9");
+    @Test void checksPointersArraysAggregatesAndTheirLayouts() {
+        String source = """
+            struct Node { next: *Node; value: int; }
+            struct Pair { flag: bool; left: int; right: int; }
+            union Value { integer: int; truth: bool; }
+            fn main() -> int {
+              let pair = Pair { flag: true, left: 40, right: 2 };
+              let values: [3]int = [1, 2, 3];
+              let pointer: *int = &pair.left;
+              *pointer = values[0];
+              let empty: *Pair = null;
+              if (empty == null) { return sizeof(Pair); }
+              return 0;
+            }
+            """;
+        var result = Xlangc.check(source);
+        assertFalse(result.hasErrors(), messages(result.diagnostics()));
+        Type.Aggregate pair = result.typeCheck().aggregates().get("Pair");
+        var layout = new LayoutEngine().layout(pair);
+        assertEquals(24, layout.size());
+        assertEquals(8, layout.alignment());
+        assertEquals(0, layout.members().get(0).offset());
+        assertEquals(8, layout.members().get(1).offset());
+        assertEquals(16, layout.members().get(2).offset());
+        Type.Aggregate value = result.typeCheck().aggregates().get("Value");
+        assertEquals(8, new LayoutEngine().layout(value).size());
+        assertTrue(new LayoutEngine().layout(value).members().stream()
+            .allMatch(member -> member.offset() == 0));
+    }
+
+    @Test void rejectsBadAggregateInitializersAndRecursiveByValueLayout() {
+        var result = Xlangc.check("""
+            struct Bad { self: Bad; }
+            struct Pair { x: int; y: bool; }
+            fn main() -> int {
+              let pair = Pair { x: true, x: 1 };
+              return 0;
+            }
+            """);
+        assertMessage(result.diagnostics(), "recursive by-value type");
+        assertMessage(result.diagnostics(), "initialized more than once");
+        assertMessage(result.diagnostics(), "field 'x' expects int but got bool");
+        assertMessage(result.diagnostics(), "missing field 'y'");
     }
 
     private static void assertMessage(List<com.xlang.compiler.diag.Diagnostic> diagnostics, String fragment) {

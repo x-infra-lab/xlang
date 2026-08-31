@@ -99,6 +99,31 @@ class BackendTest {
         assertNull(result.object());
     }
 
+    @Test void executesStructUnionArrayPointerAndMemberOperations() {
+        String source = """
+            struct Pair { flag: bool; left: int; right: int; }
+            union Number { integer: int; truth: bool; }
+            fn main() -> int {
+              let pair = Pair { flag: true, left: 40, right: 1 };
+              let values: [3]int = [1, 2, 3];
+              pair.right = values[1];
+              let pointer: *int = &pair.left;
+              *pointer += 0;
+              let number = Number { integer: 42 };
+              if (pair.flag && number.integer == 42) {
+                return *pointer + pair.right;
+              }
+              return 0;
+            }
+            """;
+        var result = Xlangc.compile(source);
+        assertFalse(result.hasErrors(), result.diagnostics().toString());
+        XMachine machine = new XMachine();
+        machine.load(linkSingleTextObject(result.object(), "main"));
+        machine.run();
+        assertEquals(42, machine.cpu().register(0));
+    }
+
     private static byte[] linkSingleTextObject(XObject object, String entry) {
         int prefix = 6; // call abs32 + halt
         byte[] text = object.text();

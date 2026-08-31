@@ -51,6 +51,29 @@ public final class XirPrinter {
             return binary.result().name() + " = " + operator(binary.operator()) + " "
                 + binary.left().name() + ", " + binary.right().name();
         }
+        if (instruction instanceof Xir.Allocate allocation) {
+            return allocation.result().name() + " = alloc " + allocation.allocatedType().displayName();
+        }
+        if (instruction instanceof Xir.GlobalAddress address) {
+            return address.result().name() + " = address @" + address.symbol();
+        }
+        if (instruction instanceof Xir.AddressOf address) {
+            return address.result().name() + " = address " + address.target().name();
+        }
+        if (instruction instanceof Xir.PointerOffset offset) {
+            return offset.result().name() + " = offset " + offset.base().name() + ", "
+                + offset.byteOffset().name();
+        }
+        if (instruction instanceof Xir.Load load) {
+            return load.result().name() + " = load " + load.address().name();
+        }
+        if (instruction instanceof Xir.Store store) {
+            return "store " + store.source().name() + ", " + store.address().name();
+        }
+        if (instruction instanceof Xir.MemCopy copy) {
+            return "memcopy " + copy.targetAddress().name() + ", "
+                + copy.sourceAddress().name() + ", " + copy.size();
+        }
         Xir.Call call = (Xir.Call) instruction;
         String args = call.arguments().stream().map(Xir.Value::name).collect(Collectors.joining(", "));
         String prefix = call.result() == null ? "" : call.result().name() + " = ";

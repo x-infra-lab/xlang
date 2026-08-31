@@ -34,6 +34,16 @@ class XMachineTest {
         assertEquals(XOS.STACK_TOP, machine.cpu().register(XCpu.STACK_POINTER));
     }
 
+    @Test void loadsAndStoresSingleByteAggregateFields() {
+        byte[] program = new Assembler()
+            .movi(0, 0x1234).movi(1, XOS.HEAP_BASE)
+            .memory(Opcode.STORE8, 0, 1).memory(Opcode.LOAD8, 2, 1).halt().bytes();
+        XMachine machine = machine(program);
+        machine.os().brk(XOS.HEAP_BASE + 1);
+        machine.run();
+        assertEquals(0x34, machine.cpu().register(2));
+    }
+
     @Test void callsAndReturnsUsingTheMachineStack() {
         byte[] program = new Assembler().jump(Opcode.CALL, 6).halt().movi(0, 42).ret().bytes();
         XMachine machine = machine(program);

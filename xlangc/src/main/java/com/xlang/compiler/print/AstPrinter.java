@@ -13,6 +13,8 @@ public final class AstPrinter {
         if (n instanceof Ast.Program x) { line(d, "Program"); each(x.items(), d + 1); }
         else if (n instanceof Ast.FnDecl x) { line(d, "FnDecl " + x.name()); for (Ast.Param p : x.params()) node(p, d + 1); if (x.returnType() != null) { line(d + 1, "ReturnType"); node(x.returnType(), d + 2); } node(x.body(), d + 1); }
         else if (n instanceof Ast.Param x) { line(d, "Param " + x.name()); node(x.type(), d + 1); }
+        else if (n instanceof Ast.AggregateDecl x) { line(d, x.kind() + " " + x.name()); each(x.fields(), d + 1); }
+        else if (n instanceof Ast.FieldDecl x) { line(d, "Field " + x.name()); node(x.type(), d + 1); }
         else if (n instanceof Ast.NamedType x) line(d, "Type " + x.name());
         else if (n instanceof Ast.PointerType x) { line(d, "PointerType"); node(x.target(), d + 1); }
         else if (n instanceof Ast.ArrayType x) { line(d, "ArrayType " + x.length()); node(x.element(), d + 1); }
@@ -33,6 +35,11 @@ public final class AstPrinter {
         else if (n instanceof Ast.IndexExpr x) { line(d, "Index"); node(x.target(), d + 1); node(x.index(), d + 1); }
         else if (n instanceof Ast.MemberExpr x) { line(d, "Member " + x.member()); node(x.target(), d + 1); }
         else if (n instanceof Ast.GroupExpr x) { line(d, "Group"); node(x.expression(), d + 1); }
+        else if (n instanceof Ast.SizeofExpr x) { line(d, "Sizeof"); node(x.type(), d + 1); }
+        else if (n instanceof Ast.CastExpr x) { line(d, "Cast"); node(x.expression(), d + 1); node(x.target(), d + 1); }
+        else if (n instanceof Ast.ArrayLiteralExpr x) { line(d, "ArrayLiteral"); each(x.elements(), d + 1); }
+        else if (n instanceof Ast.AggregateLiteralExpr x) { line(d, "AggregateLiteral " + x.typeName()); each(x.fields(), d + 1); }
+        else if (n instanceof Ast.FieldInit x) { line(d, "FieldInit " + x.name()); node(x.value(), d + 1); }
         else throw new IllegalArgumentException("unknown AST node " + n.getClass());
     }
     private void each(List<? extends Ast.Node> nodes, int depth) { for (Ast.Node n : nodes) node(n, depth); }

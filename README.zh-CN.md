@@ -19,11 +19,12 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P8 -- xrt 迷你 libc。** 内置运行时由 xlang 编写，提供 `start`、`write`、
-`exit`、`malloc`、`free` 和精简版 `printf`。可执行文件可通过 `--runtime`
-链接运行时，并用真实的 syscall trace 观察执行过程。
+**P9 -- 聚合类型与内存布局。** 语言现已支持 struct、union、定长数组、受检查
+指针、`sizeof` 与显式转换；编译器会将成员和索引操作降级为地址计算与 load/store，
+`layout` 命令可直接显示字段偏移、对齐和 padding。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
+- [P9 聚合类型规范增量](docs/spec/xlang-spec-v0.2.zh-CN.md)
 - [阶段 0 -- 骨架](docs/phases/phase-0.zh-CN.md)
 - [阶段 1 -- 词法器与语法分析器](docs/phases/phase-1.zh-CN.md)
 - [阶段 2 -- 类型与词法作用域](docs/phases/phase-2.zh-CN.md)
@@ -33,16 +34,17 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 - [阶段 6 -- 后端与 .xo 目标文件](docs/phases/phase-6.zh-CN.md)
 - [阶段 7 -- 链接器与 .xex 可执行文件](docs/phases/phase-7.zh-CN.md)
 - [阶段 8 -- xrt 迷你 libc 与 syscall trace](docs/phases/phase-8.zh-CN.md)
+- [阶段 9 -- 聚合类型与布局可视化](docs/phases/phase-9.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
 
 | 模块        | 职责                                                | 交付阶段   |
 |-------------|-----------------------------------------------------|------------|
-| `xlangc`    | 编译器：词法、语法、语义、XIR、后端                 | P1--P6     |
-| `xlangvm`   | 虚拟机：XCPU、XMachine、XOS（页表、syscall）        | P4--P5     |
+| `xlangc`    | 编译器：词法、语法、语义、布局、XIR、后端           | P1--P9     |
+| `xlangvm`   | 虚拟机：XCPU、XMachine、XOS（页表、syscall）        | P4--P5、P9 |
 | `xld`       | 链接器：段合并、符号解析、重定位                    | P7         |
-| `xrt`       | 用 xlang 写的迷你 libc：start、write、malloc、printf | P8         |
+| `xrt`       | 用 xlang 写的迷你 libc：start、write、malloc、printf | P8--P9     |
 | `xlang-cli` | 统一 `xlang` 命令入口，转发到以上模块               | P0 起      |
 
 ## 阶段路线图

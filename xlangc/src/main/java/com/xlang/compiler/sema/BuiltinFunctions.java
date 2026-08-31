@@ -10,19 +10,20 @@ public final class BuiltinFunctions {
     public static final String ADDRESS = "__address";
     public static final String LOAD64 = "__load64";
     public static final String STORE64 = "__store64";
+    private static final Type VOID_POINTER = Type.pointer(Type.VOID);
 
     private static final Map<String, Signature> INTRINSICS = signatures(
         entry(SYSCALL, List.of(Type.INT, Type.INT, Type.INT, Type.INT), Type.INT),
-        entry(ADDRESS, List.of(Type.STRING), Type.INT),
-        entry(LOAD64, List.of(Type.INT), Type.INT),
-        entry(STORE64, List.of(Type.INT, Type.INT), Type.VOID)
+        entry(ADDRESS, List.of(Type.STRING), VOID_POINTER),
+        entry(LOAD64, List.of(VOID_POINTER), Type.INT),
+        entry(STORE64, List.of(VOID_POINTER, Type.INT), Type.VOID)
     );
     private static final Map<String, Signature> RUNTIME = signatures(
         entry("start", List.of(), Type.INT),
-        entry("write", List.of(Type.INT, Type.INT, Type.INT), Type.INT),
+        entry("write", List.of(Type.INT, VOID_POINTER, Type.INT), Type.INT),
         entry("exit", List.of(Type.INT), Type.VOID),
-        entry("malloc", List.of(Type.INT), Type.INT),
-        entry("free", List.of(Type.INT), Type.VOID),
+        entry("malloc", List.of(Type.INT), VOID_POINTER),
+        entry("free", List.of(VOID_POINTER), Type.VOID),
         entry("printf", List.of(Type.STRING, Type.INT), Type.INT)
     );
 

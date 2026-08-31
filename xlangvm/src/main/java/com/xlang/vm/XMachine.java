@@ -117,6 +117,19 @@ public final class XMachine {
                 writeMemoryI64(memoryAddress, cpu.register(src), address);
                 decoded = "store64 r" + src + ", [r" + addressRegister + "]";
             }
+            case LOAD8 -> {
+                int dst = registerOperand(address + 1, address), addressRegister = registerOperand(address + 2, address);
+                int memoryAddress = memoryAddress(cpu.register(addressRegister), address);
+                long value = os.readByte(memoryAddress, Access.READ, address);
+                cpu.register(dst, value); cpu.flags(value);
+                decoded = "load8 r" + dst + ", [r" + addressRegister + "]";
+            }
+            case STORE8 -> {
+                int src = registerOperand(address + 1, address), addressRegister = registerOperand(address + 2, address);
+                int memoryAddress = memoryAddress(cpu.register(addressRegister), address);
+                os.writeByte(memoryAddress, cpu.register(src), address);
+                decoded = "store8 r" + src + ", [r" + addressRegister + "]";
+            }
             case PUSH -> {
                 int src = registerOperand(address + 1, address);
                 push(cpu.register(src), address);
