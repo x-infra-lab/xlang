@@ -33,7 +33,7 @@ import java.util.List;
 public final class Main {
 
     /** Semantic version of the xlang toolchain. Kept in one place on purpose. */
-    public static final String VERSION = "0.1.0-P9";
+    public static final String VERSION = "0.1.0-P10";
 
     private Main() {}
 
@@ -63,8 +63,8 @@ public final class Main {
                 yield 0;
             }
             case "phase" -> {
-                System.out.println("Current phase: P9 (aggregate types + layout visualizer)");
-                System.out.println("Next milestone: P10 end-to-end toolchain demo");
+                System.out.println("Current phase: P10 (end-to-end capstone demo)");
+                System.out.println("Roadmap complete: examples/capstone.xl exercises P1-P9");
                 yield 0;
             }
             case "tokens" -> frontEnd(rest, false);
@@ -345,7 +345,7 @@ public final class Main {
     private static int stub(String cmd) {
         Phase requiredPhase = plannedPhaseFor(cmd);
         System.err.println(
-            "xlang " + cmd + ": not implemented yet in P9. "
+            "xlang " + cmd + ": not implemented in the completed P10 roadmap. "
             + "Planned for " + requiredPhase.id() + " -- " + requiredPhase.title() + ".");
         return 64; // EX_USAGE-ish: the command is real, just not wired yet.
     }
@@ -386,6 +386,7 @@ public final class Main {
             "  layout <type>         Print size, alignment, fields, and padding",
             "  syscall-trace <xex>   Run an executable with a syscall log",
             "",
+            "Capstone: examples/capstone.xl",
             "See docs/phases for what each phase actually delivers."
         );
         for (String line : lines) out.println(line);

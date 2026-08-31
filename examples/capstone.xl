@@ -1,0 +1,45 @@
+struct Report {
+    ready: bool;
+    values: [4]int;
+    total: int;
+}
+
+union Reading {
+    integer: int;
+    valid: bool;
+}
+
+fn sum(values: *int, count: int) -> int {
+    let index = 0;
+    let total = 0;
+    while (index < count) {
+        total += values[index];
+        index += 1;
+    }
+    return total;
+}
+
+fn main() -> int {
+    let report = malloc(sizeof(Report)) as *Report;
+    if (report == null) {
+        return 70;
+    }
+
+    report.ready = true;
+    report.values[0] = 10;
+    report.values[1] = 11;
+    report.values[2] = 12;
+    report.values[3] = 9;
+    report.total = sum(&report.values[0], 4);
+
+    let reading = Reading { integer: report.total };
+    if (!report.ready || reading.integer != 42) {
+        free(report);
+        return 71;
+    }
+
+    printf("xlang capstone total=%d\n", reading.integer);
+    printf("Report layout bytes=%d\n", sizeof(Report));
+    free(report);
+    return 0;
+}

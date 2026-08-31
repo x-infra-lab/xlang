@@ -19,9 +19,9 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 
 ## 当前状态
 
-**P9 -- 聚合类型与内存布局。** 语言现已支持 struct、union、定长数组、受检查
-指针、`sizeof` 与显式转换；编译器会将成员和索引操作降级为地址计算与 load/store，
-`layout` 命令可直接显示字段偏移、对齐和 padding。
+**P10 -- 端到端综合示例。** 路线图已经完成。`examples/capstone.xl` 用一段真实
+XLang 程序贯穿 P1--P9：聚合类型、数组、指针、控制流和 `sizeof` 经过完整编译与链接，
+再由 xrt 的 `malloc`、`free`、`printf` 和 XOS syscall 产生可观察输出。
 
 - [语言规范 v0.1](docs/spec/xlang-spec-v0.1.zh-CN.md)
 - [P9 聚合类型规范增量](docs/spec/xlang-spec-v0.2.zh-CN.md)
@@ -35,6 +35,7 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 - [阶段 7 -- 链接器与 .xex 可执行文件](docs/phases/phase-7.zh-CN.md)
 - [阶段 8 -- xrt 迷你 libc 与 syscall trace](docs/phases/phase-8.zh-CN.md)
 - [阶段 9 -- 聚合类型与布局可视化](docs/phases/phase-9.zh-CN.md)
+- [阶段 10 -- 端到端综合示例](docs/phases/phase-10.zh-CN.md)
 - [实现计划](docs/IMPLEMENTATION_PLAN.zh-CN.md)
 
 ## 模块划分
@@ -81,6 +82,11 @@ xlang 不生成真正的机器码，而是**在 Java 里模拟一整台机器**�
 ./gradlew :xlang-cli:run --args="compile examples/runtime-demo.xl -o /tmp/runtime-demo.xo"
 ./gradlew :xlang-cli:run --args="link /tmp/runtime-demo.xo --runtime -o /tmp/runtime-demo.xex"
 ./gradlew :xlang-cli:run --args="syscall-trace /tmp/runtime-demo.xex"
+
+# P10：同一份源码依次生成 XO01、XE01，再观察 syscall
+./gradlew :xlang-cli:run --args="compile examples/capstone.xl -o /tmp/capstone.xo"
+./gradlew :xlang-cli:run --args="link /tmp/capstone.xo --runtime --verbose -o /tmp/capstone.xex"
+./gradlew :xlang-cli:run --args="syscall-trace /tmp/capstone.xex"
 ```
 
 构建使用 Gradle 的 Java 21 toolchain；如果本地找不到 JDK 21，Gradle 会自动下载。

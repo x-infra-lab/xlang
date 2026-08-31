@@ -11,7 +11,8 @@ public final class XOS {
     public static final int HEAP_BASE = 0x0001_0000;
     public static final int MMAP_BASE = 0x0004_0000;
     public static final int STACK_TOP = 0x0010_0000;
-    public static final int STACK_BYTES = PageTable.PAGE_SIZE * 8;
+    /** Enough room for nested xrt calls plus the deliberately unoptimised teaching backend frames. */
+    public static final int STACK_BYTES = PageTable.PAGE_SIZE * 12;
     public static final long SYS_WRITE = 1;
     public static final long SYS_EXIT = 2;
     public static final long SYS_BRK = 3;

@@ -118,3 +118,5 @@ operator precedence, and at least four error-recovery cases.
 
 - One xlang program that exercises P1–P9 end to end and produces
   observable output through the xrt syscalls.
+
+**Complete.**

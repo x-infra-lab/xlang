@@ -21,10 +21,10 @@ Every phase is independently runnable, is tagged in git, and ships:
 
 ## Current status
 
-**P9 -- aggregate types and memory layout.** The language now supports structs,
-unions, fixed arrays, checked pointers, `sizeof`, and explicit casts. Member and
-index operations lower to address arithmetic plus loads/stores, while `layout`
-prints offsets, alignment, and padding.
+**P10 -- end-to-end capstone.** The roadmap is complete. A real program in
+`examples/capstone.xl` exercises P1--P9: aggregates, arrays, pointers, control
+flow, and `sizeof` travel through compilation and linking, then xrt's `malloc`,
+`free`, and `printf` produce observable XOS syscalls.
 
 - [Language specification v0.1](docs/spec/xlang-spec-v0.1.md)
 - [P9 aggregate specification addendum](docs/spec/xlang-spec-v0.2.md)
@@ -38,6 +38,7 @@ prints offsets, alignment, and padding.
 - [Phase 7 -- Linker and .xex executables](docs/phases/phase-7.md)
 - [Phase 8 -- xrt mini libc and syscall tracing](docs/phases/phase-8.md)
 - [Phase 9 -- aggregate types and layout visualization](docs/phases/phase-9.md)
+- [Phase 10 -- end-to-end capstone](docs/phases/phase-10.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 
 ## Modules
@@ -84,6 +85,11 @@ prints offsets, alignment, and padding.
 ./gradlew :xlang-cli:run --args="compile examples/runtime-demo.xl -o /tmp/runtime-demo.xo"
 ./gradlew :xlang-cli:run --args="link /tmp/runtime-demo.xo --runtime -o /tmp/runtime-demo.xex"
 ./gradlew :xlang-cli:run --args="syscall-trace /tmp/runtime-demo.xex"
+
+# P10: turn the same source into XO01, then XE01, then observe its syscalls
+./gradlew :xlang-cli:run --args="compile examples/capstone.xl -o /tmp/capstone.xo"
+./gradlew :xlang-cli:run --args="link /tmp/capstone.xo --runtime --verbose -o /tmp/capstone.xex"
+./gradlew :xlang-cli:run --args="syscall-trace /tmp/capstone.xex"
 ```
 
 The build uses a Gradle Java 21 toolchain. If Gradle cannot find a JDK 21

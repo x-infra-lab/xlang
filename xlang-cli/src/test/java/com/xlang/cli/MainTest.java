@@ -41,10 +41,11 @@ class MainTest {
     }
 
     @Test
-    void phaseCommandReportsP9() {
+    void phaseCommandReportsCompletedP10() {
         Capture cap = Capture.run(() -> Main.run(new String[] {"phase"}));
         assertEquals(0, cap.exit);
-        assertTrue(cap.stdout.contains("P9"));
+        assertTrue(cap.stdout.contains("P10"));
+        assertTrue(cap.stdout.contains("examples/capstone.xl"));
     }
 
     @Test
